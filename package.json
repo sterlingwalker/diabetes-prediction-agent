@@ -16,7 +16,8 @@
     "styled-components": "^6.1.14"
   },
   "devDependencies": {
-    "@babel/plugin-proposal-private-property-in-object": "^7.16.7"
+    "@babel/plugin-proposal-private-property-in-object": "^7.16.7",
+    "prettier": "3.4.2"
   },
   "scripts": {
     "start": "react-scripts start",

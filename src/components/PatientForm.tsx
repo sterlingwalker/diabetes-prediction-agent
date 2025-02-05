@@ -1,22 +1,19 @@
-import * as React from 'react';
-import FormLabel from '@mui/material/FormLabel';
-import Grid from '@mui/material/Grid2';
-import OutlinedInput from '@mui/material/OutlinedInput';
-import { styled } from '@mui/material/styles';
+import * as React from "react";
+import FormLabel from "@mui/material/FormLabel";
+import Grid from "@mui/material/Grid2";
+import OutlinedInput from "@mui/material/OutlinedInput";
+import { styled } from "@mui/material/styles";
 
 const FormGrid = styled(Grid)(() => ({
-  display: 'flex',
-  flexDirection: 'column',
+  display: "flex",
+  flexDirection: "column",
 }));
-
 
 export default function PatientForm() {
   return (
     <Grid container spacing={3}>
       <FormGrid size={{ xs: 12 }}>
-        <FormLabel htmlFor="patient-name">
-          Patient name
-        </FormLabel>
+        <FormLabel htmlFor="patient-name">Patient name</FormLabel>
         <OutlinedInput
           id="patient-name"
           name="patient-name"
@@ -26,9 +23,7 @@ export default function PatientForm() {
         />
       </FormGrid>
       <FormGrid size={{ xs: 12, md: 6 }}>
-        <FormLabel htmlFor="glucose">
-          Glucose
-        </FormLabel>
+        <FormLabel htmlFor="glucose">Glucose</FormLabel>
         <OutlinedInput
           id="glucose"
           name="glucose"
@@ -105,7 +100,9 @@ export default function PatientForm() {
         />
       </FormGrid>
       <FormGrid size={{ xs: 12, md: 6 }}>
-        <FormLabel htmlFor="diabetesPedigree">Diabetes Pedigree Value</FormLabel>
+        <FormLabel htmlFor="diabetesPedigree">
+          Diabetes Pedigree Value
+        </FormLabel>
         <OutlinedInput
           id="diabetesPedigree"
           name="diabetesPedigree"

@@ -1,5 +1,5 @@
-import './App.css';
-import Predictor from './components/Predictor.tsx';
+import "./App.css";
+import Predictor from "./components/Predictor.tsx";
 
 function App() {
   return (
