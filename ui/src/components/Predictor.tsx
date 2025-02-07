@@ -28,56 +28,62 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
   const [activeStep, setActiveStep] = React.useState(0);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const handleNext = async () => {
-    try {
-      const response = await axios.post('http://localhost:8000/predict', formData);
-      setResult(response.data);
-      setError(null);
-    } catch (err) {
-      console.error(err);
-      setError('An error occurred while fetching the prediction.');
+
+  const handleNext = () => {
+    if (activeStep === 0) {
+      handleSubmit();
     }
     setActiveStep(activeStep + 1);
   };
+
   const handleBack = () => {
     setActiveStep(activeStep - 1);
   };
 
   const [formData, setFormData] = useState({
-    Pregnancies: '',
-    Glucose: '',
-    BloodPressure: '',
-    SkinThickness: '',
-    Insulin: '',
-    BMI: '',
-    DiabetesPedigreeFunction: '',
-    Age: ''
+    Pregnancies: "",
+    Glucose: "",
+    BloodPressure: "",
+    SkinThickness: "",
+    Insulin: "",
+    BMI: "",
+    DiabetesPedigreeFunction: "",
+    Age: "",
   });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     try {
-      const response = await axios.post('http://localhost:8000/predict', formData);
+      const response = await axios.post(
+        "http://localhost:8000/predict",
+        formData,
+      );
       setResult(response.data);
       setError(null);
     } catch (err) {
       console.error(err);
-      setError('An error occurred while fetching the prediction.');
+      setError("An error occurred while fetching the prediction.");
     }
   };
 
   const getStepContent = (step: number) => {
     switch (step) {
       case 0:
-        return <PatientForm formData={formData} setFormData={setFormData}/>;
+        return <PatientForm formData={formData} setFormData={setFormData} />;
       case 1:
-        return <CalculationProgress />;
+        return (
+          <CalculationProgress
+            predictionLoading={!result && !error}
+            prediction={result}
+            recommendationLoading={true}
+            error={error}
+          />
+        );
       case 2:
         return <Review />;
       default:
         throw new Error("Unknown step");
     }
-  }
+  };
   return (
     <AppTheme {...props}>
       <CssBaseline enableColorScheme />

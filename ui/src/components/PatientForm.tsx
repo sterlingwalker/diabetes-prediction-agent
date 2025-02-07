@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import FormLabel from "@mui/material/FormLabel";
 import Grid from "@mui/material/Grid2";
 import OutlinedInput from "@mui/material/OutlinedInput";
@@ -9,8 +9,7 @@ const FormGrid = styled(Grid)(() => ({
   flexDirection: "column",
 }));
 
-export default function PatientForm({formData, setFormData}) {
-
+export default function PatientForm({ formData, setFormData }) {
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -34,6 +33,7 @@ export default function PatientForm({formData, setFormData}) {
           name="Glucose"
           type="Glucose"
           placeholder="100"
+          value={formData.Glucose}
           required
           size="small"
           onChange={handleChange}
@@ -46,6 +46,7 @@ export default function PatientForm({formData, setFormData}) {
           name="BMI"
           type="BMI"
           placeholder="30"
+          value={formData.BMI}
           required
           size="small"
           onChange={handleChange}
@@ -58,6 +59,7 @@ export default function PatientForm({formData, setFormData}) {
           name="Age"
           type="Age"
           placeholder="35"
+          value={formData.Age}
           required
           size="small"
           onChange={handleChange}
@@ -70,6 +72,7 @@ export default function PatientForm({formData, setFormData}) {
           name="BloodPressure"
           type="BloodPressure"
           placeholder="85"
+          value={formData.BloodPressure}
           required
           size="small"
           onChange={handleChange}
@@ -82,6 +85,7 @@ export default function PatientForm({formData, setFormData}) {
           name="Insulin"
           type="Insulin"
           placeholder="80"
+          value={formData.Insulin}
           required
           size="small"
           onChange={handleChange}
@@ -94,6 +98,7 @@ export default function PatientForm({formData, setFormData}) {
           name="Pregnancies"
           type="Pregnancies"
           placeholder="1"
+          value={formData.Pregnancies}
           required
           size="small"
           onChange={handleChange}
@@ -106,6 +111,7 @@ export default function PatientForm({formData, setFormData}) {
           name="SkinThickness"
           type="SkinThickness"
           placeholder="0"
+          value={formData.SkinThickness}
           required
           size="small"
           onChange={handleChange}
@@ -120,6 +126,7 @@ export default function PatientForm({formData, setFormData}) {
           name="DiabetesPedigreeFunction"
           type="DiabetesPedigreeFunction"
           placeholder="0"
+          value={formData.DiabetesPedigreeFunction}
           required
           size="small"
           onChange={handleChange}

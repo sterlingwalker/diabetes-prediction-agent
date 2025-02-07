@@ -1,16 +1,17 @@
 import * as React from "react";
 import Box from "@mui/material/Box";
-import Stack from "@mui/material/Stack";
+import Alert from "@mui/material/Alert";
 import Typography from "@mui/material/Typography";
 import { styled } from "@mui/material/styles";
-import ConstructionIcon from "@mui/icons-material/Construction";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CircularProgress from "@mui/material/CircularProgress";
 
 const CalculationProgressContainer = styled("div")(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
-  justifyContent: "space-between",
-  width: "100%",
-  height: 200,
+  gap: theme.spacing(2),
+  width: "70%",
+  height: "100%",
   padding: theme.spacing(3),
   borderRadius: `calc(${theme.shape.borderRadius}px + 4px)`,
   border: "1px solid ",
@@ -18,12 +19,6 @@ const CalculationProgressContainer = styled("div")(({ theme }) => ({
   background:
     "linear-gradient(to bottom right, hsla(220, 35%, 97%, 0.3) 25%, hsla(220, 20%, 88%, 0.3) 100%)",
   boxShadow: "0px 4px 8px hsla(210, 0%, 0%, 0.05)",
-  [theme.breakpoints.up("xs")]: {
-    height: 200,
-  },
-  [theme.breakpoints.up("sm")]: {
-    height: 200,
-  },
   ...theme.applyStyles("dark", {
     background:
       "linear-gradient(to right bottom, hsla(220, 30%, 6%, 0.2) 25%, hsla(220, 20%, 25%, 0.2) 100%)",
@@ -31,19 +26,105 @@ const CalculationProgressContainer = styled("div")(({ theme }) => ({
   }),
 }));
 
-export default function CalculationProgress() {
-  return (
-    <Stack spacing={{ xs: 3, sm: 6 }} useFlexGap>
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        <CalculationProgressContainer>
-          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-            <Typography variant="subtitle2">
-              IN PROGRESS: Integration with CopilotKit
-            </Typography>
-            <ConstructionIcon sx={{ color: "text.secondary" }} />
-          </Box>
-        </CalculationProgressContainer>
+export default function CalculationProgress({
+  predictionLoading,
+  prediction,
+  recommendationLoading,
+  error,
+}) {
+  const isDiabetic = prediction?.predictedRisk === "Diabetes";
+  const riskProbability = prediction?.riskProbability;
+
+  const determineRiskColor = () => {
+    if (riskProbability < 30) {
+      return "success";
+    } else if (riskProbability < 70) {
+      return "warning";
+    } else {
+      return "error";
+    }
+  };
+
+  if (error) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100%",
+        }}
+      >
+        <Typography variant="h6" color="error">
+          Error: {error}
+        </Typography>
       </Box>
-    </Stack>
+    );
+  }
+
+  return (
+    <Box
+      sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}
+    >
+      <CalculationProgressContainer>
+        {predictionLoading ? (
+          <Box sx={{ display: "flex", gap: "16px" }}>
+            <Box sx={{ display: "flex", margin: "0 0 0 8px" }}>
+              <CircularProgress size={20} />
+            </Box>
+            <Typography variant="subtitle2">Loading Prediction...</Typography>
+          </Box>
+        ) : (
+          <Box sx={{ display: "flex", gap: "16px", margin: "0 0 0 8px" }}>
+            <Box sx={{ display: "flex" }}>
+              <CheckCircleIcon />
+            </Box>
+            <Typography variant="subtitle2">Prediction Complete</Typography>
+          </Box>
+        )}
+        <Box sx={{ display: "flex", width: "100%" }}>
+          {isDiabetic ? (
+            <Alert variant="outlined" severity="warning" sx={{ width: "100%" }}>
+              You are likely to be diabetic
+            </Alert>
+          ) : (
+            <Alert
+              variant="outlined"
+              severity="success"
+              color="success"
+              sx={{ width: "100%" }}
+            >
+              Your probability of having diabetes is low
+            </Alert>
+          )}
+        </Box>
+        <Box sx={{ display: "flex" }}>
+          <Alert
+            variant="outlined"
+            severity={determineRiskColor()}
+            sx={{ width: "100%" }}
+          >
+            {`Probability of developing Diabetes: ${riskProbability}%`}
+          </Alert>
+        </Box>
+        {recommendationLoading ? (
+          <Box sx={{ display: "flex", gap: "16px", margin: "0 0 16px 8px" }}>
+            <Box sx={{ display: "flex" }}>
+              <CircularProgress size={20} />
+            </Box>
+            <Typography variant="subtitle2">
+              Loading Recommendations...
+            </Typography>
+          </Box>
+        ) : (
+          <Box sx={{ display: "flex", gap: "16px", margin: "0 0 16px 8px" }}>
+            <Box sx={{ display: "flex" }}>
+              <CheckCircleIcon />
+            </Box>
+            <Typography variant="subtitle2">Recommendation Complete</Typography>
+          </Box>
+        )}
+      </CalculationProgressContainer>
+    </Box>
   );
 }

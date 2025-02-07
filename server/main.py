@@ -48,7 +48,7 @@ def predict_patient(patient_data: dict):
     risk_probability = model.predict_proba(patient_scaled)[0][1] * 100
     return {
         "predictedRisk": "Diabetes" if risk == 1 else "No Diabetes",
-        "riskProbability": f"{risk_probability:.2f}%"
+        "riskProbability": f"{risk_probability:.2f}"
     }
 
 # API endpoint for predictions
