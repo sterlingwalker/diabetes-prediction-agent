@@ -1,3 +1,4 @@
+import React from "react";
 import "./App.css";
 import Predictor from "./components/Predictor.tsx";
 

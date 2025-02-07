@@ -3,7 +3,6 @@ import { ThemeProvider, createTheme } from "@mui/material/styles";
 import type { ThemeOptions } from "@mui/material/styles";
 import { inputsCustomizations } from "./customizations/inputs.tsx";
 import { dataDisplayCustomizations } from "./customizations/dataDisplay.tsx";
-import { feedbackCustomizations } from "./customizations/feedback.tsx";
 import { navigationCustomizations } from "./customizations/navigation.tsx";
 import { surfacesCustomizations } from "./customizations/surfaces.ts";
 import { colorSchemes, typography, shadows, shape } from "./themePrimitives.ts";
@@ -35,7 +34,6 @@ export default function AppTheme(props: AppThemeProps) {
           components: {
             ...inputsCustomizations,
             ...dataDisplayCustomizations,
-            ...feedbackCustomizations,
             ...navigationCustomizations,
             ...surfacesCustomizations,
             ...themeComponents,

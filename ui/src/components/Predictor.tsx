@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -19,28 +19,86 @@ import CalculationProgress from "./CalculationProgress.tsx";
 import Review from "./Review.tsx";
 import HealthAndSafetyIcon from "@mui/icons-material/HealthAndSafety";
 import AppTheme from "../theme/AppTheme.tsx";
+import axios from "axios";
 import ColorModeIconDropdown from "../theme/ColorModeIconDropdown.tsx";
 
 const steps = ["Patient Details", "Calculate Diagnosis", "Review Results"];
-function getStepContent(step: number) {
-  switch (step) {
-    case 0:
-      return <PatientForm />;
-    case 1:
-      return <CalculationProgress />;
-    case 2:
-      return <Review />;
-    default:
-      throw new Error("Unknown step");
-  }
-}
+
 export default function Predictor(props: { disableCustomTheme?: boolean }) {
   const [activeStep, setActiveStep] = React.useState(0);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+  const [recommendation, setRecommendation] = useState(null);
+
   const handleNext = () => {
+    if (activeStep === 0) {
+      handleSubmit();
+    }
     setActiveStep(activeStep + 1);
   };
+
   const handleBack = () => {
     setActiveStep(activeStep - 1);
+  };
+
+  const [formData, setFormData] = useState({
+    Pregnancies: "",
+    Glucose: "",
+    BloodPressure: "",
+    SkinThickness: "",
+    Insulin: "",
+    BMI: "",
+    DiabetesPedigreeFunction: "",
+    Age: "",
+  });
+
+  const handleSubmit = async () => {
+    try {
+      const response = await axios.post(
+        "http://localhost:8000/predict",
+        formData,
+      );
+      setResult(response.data);
+      setError(null);
+      getRecommendations();
+    } catch (err) {
+      console.error(err);
+      setError("An error occurred while fetching the prediction.");
+    }
+  };
+
+  const getRecommendations = async () => {
+    try {
+      const response = await axios.post(
+        "http://localhost:8000/recommendations",
+        formData,
+      );
+      setRecommendation(response.data);
+      setError(null);
+    } catch (err) {
+      console.error(err);
+      setError("An error occurred while fetching the recommendations.");
+    }
+  };
+
+  const getStepContent = (step: number) => {
+    switch (step) {
+      case 0:
+        return <PatientForm formData={formData} setFormData={setFormData} />;
+      case 1:
+        return (
+          <CalculationProgress
+            predictionLoading={!result && !error}
+            prediction={result}
+            recommendationLoading={!recommendation && !error}
+            error={error}
+          />
+        );
+      case 2:
+        return <Review response={recommendation} />;
+      default:
+        throw new Error("Unknown step");
+    }
   };
   return (
     <AppTheme {...props}>
@@ -54,7 +112,10 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
         sx={{
           height: {
             xs: "100%",
-            sm: "calc(100dvh - var(--template-frame-height, 0px))",
+            sm: "100%",
+          },
+          minHeight: {
+            sm: "100vh",
           },
           mt: {
             xs: 4,
@@ -158,7 +219,6 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
               flexGrow: 1,
               width: "100%",
               maxWidth: { sm: "100%", md: 600 },
-              maxHeight: "720px",
               gap: { xs: 5, md: "none" },
             }}
           >
