@@ -1,1 +1,8 @@
-
+imbalanced-learn
+langchain-community
+openai
+pandas
+scikit-learn
+shap
+fastapi[standard]
+pydantic
