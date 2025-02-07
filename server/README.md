@@ -10,3 +10,6 @@ pip3 install pydantic
 python3 train.py 
 
 python3 main.py
+
+
+openapi key
