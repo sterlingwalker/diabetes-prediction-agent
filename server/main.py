@@ -62,6 +62,11 @@ async def log_requests(request: Request, call_next):
         logger.error(f"Could not parse request body for {request.url.path}: {body.decode('utf-8')}")
     
     response = await call_next(request)
+    
+    response_body = [chunk async for chunk in response.body_iterator]
+    response.body_iterator = iter(response_body)
+    logger.info(f"Response for {request.url.path}: {b''.join(response_body).decode('utf-8')}")
+
     return response
 
 # Define a prediction function
@@ -108,27 +113,15 @@ llm = ChatOpenAI(temperature=0.7, openai_api_key=openai_api_key)
 # Define expert prompts
 endocrinologist_prompt = PromptTemplate(
     input_variables=['patient'],
-    template=(
-        "As an endocrinologist, provide a treatment plan for the following patient. "
-        "Here is the patient data: {patient}\n\n"
-        "Provide actionable and specific recommendations."
-    )
+    template="As an endocrinologist, provide a treatment plan for the following patient. {patient}"
 )
 dietitian_prompt = PromptTemplate(
     input_variables=['patient'],
-    template=(
-        "As a dietitian, create a dietary plan for the following patient. "
-        "Here is the patient data: {patient}\n\n"
-        "Focus on managing diabetes and improving health."
-    )
+    template="As a dietitian, create a dietary plan for the following patient. {patient}"
 )
 fitness_prompt = PromptTemplate(
     input_variables=['patient'],
-    template=(
-        "As a fitness expert, create an exercise plan for the following patient. "
-        "Here is the patient data: {patient}\n\n"
-        "Focus on managing diabetes and overall fitness."
-    )
+    template="As a fitness expert, create an exercise plan for the following patient. {patient}"
 )
 
 # Define expert chains
@@ -140,12 +133,12 @@ fitness_chain = LLMChain(llm=llm, prompt=fitness_prompt)
 meta_agent_prompt = PromptTemplate(
     input_variables=['endocrinologist', 'dietitian', 'fitness', 'patient'],
     template=(
-        "You are a health consultant consolidating recommendations from multiple experts for a patient. "
-        "Here is the patient data: {patient}\n\n"
+        "You are a health consultant consolidating recommendations for a patient. "
+        "Patient Data: {patient}\n\n"
         "Endocrinologist Recommendation:\n{endocrinologist}\n\n"
         "Dietitian Recommendation:\n{dietitian}\n\n"
         "Fitness Expert Recommendation:\n{fitness}\n\n"
-        "Based on these expert recommendations, provide a final consolidated plan for the patient."
+        "Provide a final consolidated plan for the patient."
     )
 )
 meta_agent_chain = LLMChain(llm=llm, prompt=meta_agent_prompt)
@@ -154,7 +147,7 @@ meta_agent_chain = LLMChain(llm=llm, prompt=meta_agent_prompt)
 async def get_recommendations(patient: PatientData):
     try:
         patient_data = patient.dict()
-        logger.info(f"Received patient data for recommendations: {json.dumps(patient_data, indent=2)}")
+        logger.info(f"Received patient data: {json.dumps(patient_data, indent=2)}")
 
         # Run expert chains using properly formatted inputs
         endocrinologist_recommendation = endocrinologist_chain.invoke({"patient": str(patient_data)})
@@ -174,14 +167,18 @@ async def get_recommendations(patient: PatientData):
             "patient": str(patient_data)
         })
 
-        logger.info(f"Final Consolidated Recommendation: {final_recommendation}")
-
-        return {
+        response_data = {
             "EndocrinologistRecommendation": endocrinologist_recommendation,
             "DietitianRecommendation": dietitian_recommendation,
             "FitnessRecommendation": fitness_recommendation,
             "FinalRecommendation": final_recommendation
         }
+
+        # Log final response
+        logger.info(f"Final Response: {json.dumps(response_data, indent=2)}")
+
+        return response_data
+
     except Exception as e:
         logger.error(f"Error processing recommendations: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
