@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
@@ -15,7 +15,8 @@ from langchain.prompts import PromptTemplate
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -47,7 +48,7 @@ try:
     with open("model.pkl", "rb") as f:
         model = pickle.load(f)
 except Exception as e:
-    logging.error("Error loading model/scaler: %s", str(e))
+    logger.error("Error loading model/scaler: %s", str(e))
     raise Exception("Error loading model/scaler. Please ensure they are trained and saved correctly.") from e
 
 # Middleware to log incoming requests
@@ -56,9 +57,9 @@ async def log_requests(request: Request, call_next):
     body = await request.body()
     try:
         json_body = json.loads(body.decode("utf-8"))
-        logging.info(f"Incoming request to {request.url.path} with body: {json.dumps(json_body, indent=2)}")
+        logger.info(f"Incoming request to {request.url.path} with body: {json.dumps(json_body, indent=2)}")
     except json.JSONDecodeError:
-        logging.error(f"Could not parse request body for {request.url.path}: {body.decode('utf-8')}")
+        logger.error(f"Could not parse request body for {request.url.path}: {body.decode('utf-8')}")
     
     response = await call_next(request)
     return response
@@ -81,7 +82,7 @@ def predict_patient(patient_data: dict):
             "RiskProbability": f"{risk_probability:.2f}%"
         }
     except Exception as e:
-        logging.error("Prediction error: %s", str(e))
+        logger.error("Prediction error: %s", str(e))
         raise
 
 @app.post("/predict")
@@ -89,13 +90,15 @@ async def predict(patient: dict):
     """Handles prediction requests with proper parsing."""
     try:
         patient = {key: float(value) for key, value in patient.items()}  # Convert input values to float
-        logging.info(f"Received valid patient data: {patient}")
+        logger.info(f"Received valid patient data: {patient}")
         result = predict_patient(patient)
+        logger.info(f"Prediction result: {result}")
         return result
     except ValueError as e:
+        logger.error(f"Invalid input: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
     except Exception as e:
-        logging.error(f"Error processing request: {str(e)}")
+        logger.error(f"Error processing request: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Initialize OpenAI model with API Key
@@ -151,11 +154,17 @@ meta_agent_chain = LLMChain(llm=llm, prompt=meta_agent_prompt)
 async def get_recommendations(patient: PatientData):
     try:
         patient_data = patient.dict()
+        logger.info(f"Received patient data for recommendations: {json.dumps(patient_data, indent=2)}")
 
         # Run expert chains using properly formatted inputs
         endocrinologist_recommendation = endocrinologist_chain.invoke({"patient": str(patient_data)})
         dietitian_recommendation = dietitian_chain.invoke({"patient": str(patient_data)})
         fitness_recommendation = fitness_chain.invoke({"patient": str(patient_data)})
+
+        # Log individual recommendations
+        logger.info(f"Endocrinologist Recommendation: {endocrinologist_recommendation}")
+        logger.info(f"Dietitian Recommendation: {dietitian_recommendation}")
+        logger.info(f"Fitness Recommendation: {fitness_recommendation}")
 
         # Consolidate recommendations
         final_recommendation = meta_agent_chain.invoke({
@@ -165,6 +174,8 @@ async def get_recommendations(patient: PatientData):
             "patient": str(patient_data)
         })
 
+        logger.info(f"Final Consolidated Recommendation: {final_recommendation}")
+
         return {
             "EndocrinologistRecommendation": endocrinologist_recommendation,
             "DietitianRecommendation": dietitian_recommendation,
@@ -172,7 +183,7 @@ async def get_recommendations(patient: PatientData):
             "FinalRecommendation": final_recommendation
         }
     except Exception as e:
-        logging.error(f"Error processing recommendations: {str(e)}")
+        logger.error(f"Error processing recommendations: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Run the app
