@@ -6,6 +6,9 @@ import pickle
 import os
 import logging
 import json
+from fastapi import Depends
+
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -77,16 +80,24 @@ def predict_patient(patient_data: dict):
         logging.error("Prediction error: %s", str(e))
         raise
 
-# API endpoint for predictions with logging
-@app.post("/predict")
-async def predict(patient: PatientData):
+def parse_patient_data(patient: dict = Depends()):
+    """Convert string values to floats before validation."""
     try:
-        logging.info(f"Received valid patient data: {patient.dict()}")  # Log parsed request data
-        result = predict_patient(patient.dict())
+        return {key: float(value) for key, value in patient.items()}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
+
+@app.post("/predict")
+async def predict(patient: dict = Depends(parse_patient_data)):
+    try:
+        logging.info(f"Received valid patient data: {patient}")
+        result = predict_patient(patient)
         return result
     except Exception as e:
         logging.error(f"Error processing request: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
 
 # API endpoint for recommendations
 @app.post("/recommendations")
