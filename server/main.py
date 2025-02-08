@@ -1,17 +1,23 @@
-from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import pickle
-import os
 import logging
 import json
-from fastapi import Depends
+import os
+from dotenv import load_dotenv
+from langchain.chains import LLMChain
+from langchain.chat_models import ChatOpenAI
+from langchain.prompts import PromptTemplate
+import uvicorn
 
-
+# Load environment variables
+load_dotenv()
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -43,91 +49,135 @@ try:
     with open("model.pkl", "rb") as f:
         model = pickle.load(f)
 except Exception as e:
-    logging.error("Error loading model/scaler: %s", str(e))
-    raise Exception("Error loading model/scaler. Please ensure they are trained and saved correctly.") from e
+    logger.error("Error loading model/scaler: %s", str(e))
+    raise Exception("Error loading model/scaler. Ensure they are trained and saved correctly.") from e
 
-# Middleware to log incoming requests
+# Middleware to log requests and prevent response stream errors
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    body = await request.body()
     try:
-        json_body = json.loads(body.decode("utf-8"))
-        logging.info(f"Incoming request to {request.url.path} with body: {json.dumps(json_body, indent=2)}")
-    except json.JSONDecodeError:
-        logging.error(f"Could not parse request body for {request.url.path}: {body.decode('utf-8')}")
-    
+        if request.method in ["POST", "PUT", "PATCH"]:
+            body = await request.body()
+            if body:
+                json_body = json.loads(body.decode("utf-8"))
+                logger.info(f"Incoming request to {request.url.path} with body: {json.dumps(json_body, indent=2)}")
+        else:
+            logger.info(f"Incoming {request.method} request to {request.url.path}")
+    except Exception as e:
+        logger.error(f"Error logging request: {str(e)}")
+
     response = await call_next(request)
     return response
 
 # Define a prediction function
 def predict_patient(patient_data: dict):
     try:
-        # Convert dictionary to pandas DataFrame
         patient_df = pd.DataFrame([patient_data])
-        
-        # Scale data using the pre-trained scaler
         patient_scaled = scaler.transform(patient_df)
-        
-        # Make prediction and calculate probability
         risk = model.predict(patient_scaled)[0]
         risk_probability = model.predict_proba(patient_scaled)[0][1] * 100
         
         return {
-            "predictedRisk": "Diabetes" if risk == 1 else "No Diabetes",
-            "riskProbability": f"{risk_probability:.2f}"
+            "PredictedRisk": "Diabetes" if risk == 1 else "No Diabetes",
+            "RiskProbability": f"{risk_probability:.2f}%"
         }
     except Exception as e:
-        logging.error("Prediction error: %s", str(e))
+        logger.error("Prediction error: %s", str(e))
         raise
 
-def parse_patient_data(patient: dict = Depends()):
-    """Convert string values to floats before validation."""
-    try:
-        return {key: float(value) for key, value in patient.items()}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
-
 @app.post("/predict")
-async def predict(patient: dict = Depends(parse_patient_data)):
+async def predict(patient: dict):
+    """Handles prediction requests with proper parsing."""
     try:
-        logging.info(f"Received valid patient data: {patient}")
+        patient = {key: float(value) for key, value in patient.items()}  # Convert input values to float
+        logger.info(f"Received valid patient data: {patient}")
         result = predict_patient(patient)
+        logger.info(f"Prediction result: {result}")
         return result
+    except ValueError as e:
+        logger.error(f"Invalid input: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
     except Exception as e:
-        logging.error(f"Error processing request: {str(e)}")
+        logger.error(f"Error processing request: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Initialize OpenAI model with API Key
+openai_api_key = os.getenv("OPENAI_API_KEY")
+if not openai_api_key:
+    raise Exception("Missing OpenAI API key. Set OPENAI_API_KEY in environment variables.")
 
+llm = ChatOpenAI(temperature=0.7, openai_api_key=openai_api_key)
 
-# API endpoint for recommendations
+# Define expert prompts
+endocrinologist_prompt = PromptTemplate(
+    input_variables=['patient'],
+    template="As an endocrinologist, provide a treatment plan for the following patient: {patient}"
+)
+dietitian_prompt = PromptTemplate(
+    input_variables=['patient'],
+    template="As a dietitian, create a dietary plan for the following patient: {patient}"
+)
+fitness_prompt = PromptTemplate(
+    input_variables=['patient'],
+    template="As a fitness expert, create an exercise plan for the following patient: {patient}"
+)
+
+# Define expert chains
+endocrinologist_chain = LLMChain(llm=llm, prompt=endocrinologist_prompt)
+dietitian_chain = LLMChain(llm=llm, prompt=dietitian_prompt)
+fitness_chain = LLMChain(llm=llm, prompt=fitness_prompt)
+
+# Meta-agent prompt to consolidate expert recommendations
+meta_agent_prompt = PromptTemplate(
+    input_variables=['endocrinologist', 'dietitian', 'fitness', 'patient'],
+    template=(
+        "You are a health consultant consolidating recommendations for a patient. "
+        "Patient Data: {patient}\n\n"
+        "Endocrinologist Recommendation:\n{endocrinologist}\n\n"
+        "Dietitian Recommendation:\n{dietitian}\n\n"
+        "Fitness Expert Recommendation:\n{fitness}\n\n"
+        "Provide a final consolidated plan for the patient."
+    )
+)
+meta_agent_chain = LLMChain(llm=llm, prompt=meta_agent_prompt)
+
 @app.post("/recommendations")
 async def get_recommendations(patient: PatientData):
     try:
-        patient_str = str(patient.dict())
-        
-        # Dummy placeholders for expert chains (modify as needed)
-        endocrinologist_rec = "Endocrinologist recommendation based on patient data"
-        dietitian_rec = "Dietitian recommendation based on patient data"
-        fitness_rec = "Fitness expert recommendation based on patient data"
+        patient_data = patient.dict()
+        logger.info(f"Received patient data: {json.dumps(patient_data, indent=2)}")
 
-        final_rec = (
-            f"Final consolidated plan:\n\n"
-            f"Endocrinologist: {endocrinologist_rec}\n"
-            f"Dietitian: {dietitian_rec}\n"
-            f"Fitness: {fitness_rec}"
+        # Run expert chains
+        endocrinologist_recommendation = endocrinologist_chain.run(patient=str(patient_data))
+        dietitian_recommendation = dietitian_chain.run(patient=str(patient_data))
+        fitness_recommendation = fitness_chain.run(patient=str(patient_data))
+
+        logger.info(f"Endocrinologist: {endocrinologist_recommendation}")
+        logger.info(f"Dietitian: {dietitian_recommendation}")
+        logger.info(f"Fitness: {fitness_recommendation}")
+
+        # Consolidate recommendations
+        final_recommendation = meta_agent_chain.run(
+            endocrinologist=endocrinologist_recommendation,
+            dietitian=dietitian_recommendation,
+            fitness=fitness_recommendation,
+            patient=str(patient_data)
         )
 
-        return {
-            "endocrinologistRecommendation": endocrinologist_rec,
-            "dietitianRecommendation": dietitian_rec,
-            "fitnessRecommendation": fitness_rec,
-            "finalRecommendation": final_rec
+        response_data = {
+            "EndocrinologistRecommendation": endocrinologist_recommendation,
+            "DietitianRecommendation": dietitian_recommendation,
+            "FitnessRecommendation": fitness_recommendation,
+            "FinalRecommendation": final_recommendation
         }
+
+        logger.info(f"Final Response: {json.dumps(response_data, indent=2)}")
+        return response_data
+
     except Exception as e:
-        logging.error(f"Error processing recommendations: {str(e)}")
+        logger.error(f"Error processing recommendations: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Run the app
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8000))  # Ensure compatibility with Render
+    uvicorn.run(app, host="0.0.0.0", port=port, timeout_keep_alive=300)
