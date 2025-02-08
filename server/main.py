@@ -5,11 +5,11 @@ import pandas as pd
 import pickle
 import logging
 import json
+import os
+from dotenv import load_dotenv
 from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
-from dotenv import load_dotenv
-import os
 
 # Load environment variables
 load_dotenv()
@@ -84,19 +84,16 @@ def predict_patient(patient_data: dict):
         logging.error("Prediction error: %s", str(e))
         raise
 
-def parse_patient_data(patient: dict = Depends()):
-    """Convert string values to floats before validation."""
-    try:
-        return {key: float(value) for key, value in patient.items()}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
-
 @app.post("/predict")
-async def predict(patient: dict = Depends(parse_patient_data)):
+async def predict(patient: dict):
+    """Handles prediction requests with proper parsing."""
     try:
+        patient = {key: float(value) for key, value in patient.items()}  # Convert input values to float
         logging.info(f"Received valid patient data: {patient}")
         result = predict_patient(patient)
         return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
     except Exception as e:
         logging.error(f"Error processing request: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
