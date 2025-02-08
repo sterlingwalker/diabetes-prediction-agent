@@ -1,6 +1,7 @@
 imbalanced-learn
+langchain
 langchain-community
-openai
+langchain-openai
 pandas
 scikit-learn
 shap
