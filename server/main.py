@@ -1,22 +1,17 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import pickle
+import os
 import logging
 import json
-import os
-from dotenv import load_dotenv
-from langchain.chains import LLMChain
-from langchain.chat_models import ChatOpenAI
-from langchain.prompts import PromptTemplate
+from fastapi import Depends
 
-# Load environment variables
-load_dotenv()
+
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -48,7 +43,7 @@ try:
     with open("model.pkl", "rb") as f:
         model = pickle.load(f)
 except Exception as e:
-    logger.error("Error loading model/scaler: %s", str(e))
+    logging.error("Error loading model/scaler: %s", str(e))
     raise Exception("Error loading model/scaler. Please ensure they are trained and saved correctly.") from e
 
 # Middleware to log incoming requests
@@ -57,16 +52,11 @@ async def log_requests(request: Request, call_next):
     body = await request.body()
     try:
         json_body = json.loads(body.decode("utf-8"))
-        logger.info(f"Incoming request to {request.url.path} with body: {json.dumps(json_body, indent=2)}")
+        logging.info(f"Incoming request to {request.url.path} with body: {json.dumps(json_body, indent=2)}")
     except json.JSONDecodeError:
-        logger.error(f"Could not parse request body for {request.url.path}: {body.decode('utf-8')}")
+        logging.error(f"Could not parse request body for {request.url.path}: {body.decode('utf-8')}")
     
     response = await call_next(request)
-    
-    response_body = [chunk async for chunk in response.body_iterator]
-    response.body_iterator = iter(response_body)
-    logger.info(f"Response for {request.url.path}: {b''.join(response_body).decode('utf-8')}")
-
     return response
 
 # Define a prediction function
@@ -83,104 +73,58 @@ def predict_patient(patient_data: dict):
         risk_probability = model.predict_proba(patient_scaled)[0][1] * 100
         
         return {
-            "PredictedRisk": "Diabetes" if risk == 1 else "No Diabetes",
-            "RiskProbability": f"{risk_probability:.2f}%"
+            "predictedRisk": "Diabetes" if risk == 1 else "No Diabetes",
+            "riskProbability": f"{risk_probability:.2f}"
         }
     except Exception as e:
-        logger.error("Prediction error: %s", str(e))
+        logging.error("Prediction error: %s", str(e))
         raise
 
-@app.post("/predict")
-async def predict(patient: dict):
-    """Handles prediction requests with proper parsing."""
+def parse_patient_data(patient: dict = Depends()):
+    """Convert string values to floats before validation."""
     try:
-        patient = {key: float(value) for key, value in patient.items()}  # Convert input values to float
-        logger.info(f"Received valid patient data: {patient}")
-        result = predict_patient(patient)
-        logger.info(f"Prediction result: {result}")
-        return result
+        return {key: float(value) for key, value in patient.items()}
     except ValueError as e:
-        logger.error(f"Invalid input: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
+
+@app.post("/predict")
+async def predict(patient: dict = Depends(parse_patient_data)):
+    try:
+        logging.info(f"Received valid patient data: {patient}")
+        result = predict_patient(patient)
+        return result
     except Exception as e:
-        logger.error(f"Error processing request: {str(e)}")
+        logging.error(f"Error processing request: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Initialize OpenAI model with API Key
-openai_api_key = os.getenv("OPENAI_API_KEY")  # Load API key from environment variables
-llm = ChatOpenAI(temperature=0.7, openai_api_key=openai_api_key)
 
-# Define expert prompts
-endocrinologist_prompt = PromptTemplate(
-    input_variables=['patient'],
-    template="As an endocrinologist, provide a treatment plan for the following patient. {patient}"
-)
-dietitian_prompt = PromptTemplate(
-    input_variables=['patient'],
-    template="As a dietitian, create a dietary plan for the following patient. {patient}"
-)
-fitness_prompt = PromptTemplate(
-    input_variables=['patient'],
-    template="As a fitness expert, create an exercise plan for the following patient. {patient}"
-)
 
-# Define expert chains
-endocrinologist_chain = LLMChain(llm=llm, prompt=endocrinologist_prompt)
-dietitian_chain = LLMChain(llm=llm, prompt=dietitian_prompt)
-fitness_chain = LLMChain(llm=llm, prompt=fitness_prompt)
-
-# Meta-agent prompt to consolidate expert recommendations
-meta_agent_prompt = PromptTemplate(
-    input_variables=['endocrinologist', 'dietitian', 'fitness', 'patient'],
-    template=(
-        "You are a health consultant consolidating recommendations for a patient. "
-        "Patient Data: {patient}\n\n"
-        "Endocrinologist Recommendation:\n{endocrinologist}\n\n"
-        "Dietitian Recommendation:\n{dietitian}\n\n"
-        "Fitness Expert Recommendation:\n{fitness}\n\n"
-        "Provide a final consolidated plan for the patient."
-    )
-)
-meta_agent_chain = LLMChain(llm=llm, prompt=meta_agent_prompt)
-
+# API endpoint for recommendations
 @app.post("/recommendations")
 async def get_recommendations(patient: PatientData):
     try:
-        patient_data = patient.dict()
-        logger.info(f"Received patient data: {json.dumps(patient_data, indent=2)}")
+        patient_str = str(patient.dict())
+        
+        # Dummy placeholders for expert chains (modify as needed)
+        endocrinologist_rec = "Endocrinologist recommendation based on patient data"
+        dietitian_rec = "Dietitian recommendation based on patient data"
+        fitness_rec = "Fitness expert recommendation based on patient data"
 
-        # Run expert chains using properly formatted inputs
-        endocrinologist_recommendation = endocrinologist_chain.invoke({"patient": str(patient_data)})
-        dietitian_recommendation = dietitian_chain.invoke({"patient": str(patient_data)})
-        fitness_recommendation = fitness_chain.invoke({"patient": str(patient_data)})
+        final_rec = (
+            f"Final consolidated plan:\n\n"
+            f"Endocrinologist: {endocrinologist_rec}\n"
+            f"Dietitian: {dietitian_rec}\n"
+            f"Fitness: {fitness_rec}"
+        )
 
-        # Log individual recommendations
-        logger.info(f"Endocrinologist Recommendation: {endocrinologist_recommendation}")
-        logger.info(f"Dietitian Recommendation: {dietitian_recommendation}")
-        logger.info(f"Fitness Recommendation: {fitness_recommendation}")
-
-        # Consolidate recommendations
-        final_recommendation = meta_agent_chain.invoke({
-            "endocrinologist": endocrinologist_recommendation,
-            "dietitian": dietitian_recommendation,
-            "fitness": fitness_recommendation,
-            "patient": str(patient_data)
-        })
-
-        response_data = {
-            "EndocrinologistRecommendation": endocrinologist_recommendation,
-            "DietitianRecommendation": dietitian_recommendation,
-            "FitnessRecommendation": fitness_recommendation,
-            "FinalRecommendation": final_recommendation
+        return {
+            "endocrinologistRecommendation": endocrinologist_rec,
+            "dietitianRecommendation": dietitian_rec,
+            "fitnessRecommendation": fitness_rec,
+            "finalRecommendation": final_rec
         }
-
-        # Log final response
-        logger.info(f"Final Response: {json.dumps(response_data, indent=2)}")
-
-        return response_data
-
     except Exception as e:
-        logger.error(f"Error processing recommendations: {str(e)}")
+        logging.error(f"Error processing recommendations: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Run the app
