@@ -155,13 +155,13 @@ async def get_recommendations(patient: PatientData):
     try:
         patient_data = patient.dict()
 
-        # Run expert chains with correct input formatting
-        endocrinologist_recommendation = endocrinologist_chain.run({"patient": str(patient_data)})
-        dietitian_recommendation = dietitian_chain.run({"patient": str(patient_data)})
-        fitness_recommendation = fitness_chain.run({"patient": str(patient_data)})
+        # Run expert chains using properly formatted inputs
+        endocrinologist_recommendation = endocrinologist_chain.invoke({"patient": str(patient_data)})
+        dietitian_recommendation = dietitian_chain.invoke({"patient": str(patient_data)})
+        fitness_recommendation = fitness_chain.invoke({"patient": str(patient_data)})
 
         # Consolidate recommendations
-        final_recommendation = meta_agent_chain.run({
+        final_recommendation = meta_agent_chain.invoke({
             "endocrinologist": endocrinologist_recommendation,
             "dietitian": dietitian_recommendation,
             "fitness": fitness_recommendation,
