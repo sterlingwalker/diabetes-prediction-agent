@@ -25,11 +25,21 @@ import ColorModeIconDropdown from "../theme/ColorModeIconDropdown.tsx";
 const steps = ["Patient Details", "Calculate Diagnosis", "Review Results"];
 
 export default function Predictor(props: { disableCustomTheme?: boolean }) {
-  const [activeStep, setActiveStep] = useState(0);
+  const [activeStep, setActiveStep] = React.useState(0);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [recommendation, setRecommendation] = useState(null);
-  const [loading, setLoading] = useState(false); // Track API calls
+
+  const handleNext = () => {
+    if (activeStep === 0) {
+      handleSubmit();
+    }
+    setActiveStep(activeStep + 1);
+  };
+
+  const handleBack = () => {
+    setActiveStep(activeStep - 1);
+  };
 
   const [formData, setFormData] = useState({
     Pregnancies: "",
@@ -42,51 +52,32 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
     Age: "",
   });
 
-  const handleNext = async () => {
-    if (activeStep === 0) {
-      await handleSubmit();
-    }
-    setActiveStep((prevStep) => prevStep + 1);
-  };
-
-  const handleBack = () => {
-    setActiveStep((prevStep) => prevStep - 1);
-  };
-
   const handleSubmit = async () => {
-    setLoading(true);
     try {
-      console.log("Sending prediction request with:", formData);
-      const response = await axios.post("http://localhost:8000/predict", formData);
-      
-      console.log("Prediction response received:", response.data);
+      const response = await axios.post(
+        "http://localhost:8000/predict",
+        formData,
+      );
       setResult(response.data);
       setError(null);
-
-      // Fetch recommendations **after** receiving a valid prediction
-      await getRecommendations(response.data);
+      getRecommendations();
     } catch (err) {
-      console.error("Prediction error:", err);
+      console.error(err);
       setError("An error occurred while fetching the prediction.");
-    } finally {
-      setLoading(false);
     }
   };
 
-  const getRecommendations = async (predictionResult: any) => {
-    setLoading(true);
+  const getRecommendations = async () => {
     try {
-      console.log("Sending recommendation request with:", formData);
-      const response = await axios.post("http://localhost:8000/recommendations", formData);
-      
-      console.log("Recommendation response received:", response.data);
+      const response = await axios.post(
+        "http://localhost:8000/recommendations",
+        formData,
+      );
       setRecommendation(response.data);
       setError(null);
     } catch (err) {
-      console.error("Recommendation error:", err);
+      console.error(err);
       setError("An error occurred while fetching the recommendations.");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -97,23 +88,18 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
       case 1:
         return (
           <CalculationProgress
-            predictionLoading={loading && !result}
+            predictionLoading={!result && !error}
             prediction={result}
-            recommendationLoading={loading && !recommendation}
+            recommendationLoading={!recommendation && !error}
             error={error}
           />
         );
       case 2:
-        return recommendation ? (
-          <Review response={recommendation} />
-        ) : (
-          <p>Loading recommendations...</p>
-        );
+        return <Review response={recommendation} />;
       default:
         throw new Error("Unknown step");
     }
   };
-
   return (
     <AppTheme {...props}>
       <CssBaseline enableColorScheme />
@@ -121,15 +107,30 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
         <ColorModeIconDropdown />
       </Box>
 
-      <Grid container sx={{ minHeight: "100vh", mt: { xs: 4, sm: 0 } }}>
+      <Grid
+        container
+        sx={{
+          height: {
+            xs: "100%",
+            sm: "100%",
+          },
+          minHeight: {
+            sm: "100vh",
+          },
+          mt: {
+            xs: 4,
+            sm: 0,
+          },
+        }}
+      >
         <Grid
           size={{ xs: 12, sm: 5, lg: 4 }}
           sx={{
             display: { xs: "none", md: "flex" },
             flexDirection: "column",
             backgroundColor: "background.paper",
-            borderRight: { md: "1px solid" },
-            borderColor: { md: "divider" },
+            borderRight: { sm: "none", md: "1px solid" },
+            borderColor: { sm: "none", md: "divider" },
             alignItems: "start",
             pt: 16,
             px: 10,
@@ -139,7 +140,15 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
           <Typography variant="h4">
             <HealthAndSafetyIcon /> Diabetes Predictor
           </Typography>
-          <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, width: "100%", maxWidth: 500 }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              flexGrow: 1,
+              width: "100%",
+              maxWidth: 500,
+            }}
+          >
             <Info />
           </Box>
         </Grid>
@@ -148,35 +157,158 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
           sx={{
             display: "flex",
             flexDirection: "column",
+            maxWidth: "100%",
             width: "100%",
-            backgroundColor: { sm: "background.default" },
+            backgroundColor: { xs: "transparent", sm: "background.default" },
             alignItems: "start",
-            pt: { sm: 16 },
+            pt: { xs: 0, sm: 16 },
             px: { xs: 2, sm: 10 },
             gap: { xs: 4, md: 8 },
           }}
         >
-          <Box sx={{ display: "flex", justifyContent: "space-between", width: "100%", maxWidth: 600 }}>
-            <Stepper id="desktop-stepper" activeStep={activeStep} sx={{ width: "100%", height: 40 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: { sm: "space-between", md: "flex-end" },
+              alignItems: "center",
+              width: "100%",
+              maxWidth: { sm: "100%", md: 600 },
+            }}
+          >
+            <Box
+              sx={{
+                display: { xs: "none", md: "flex" },
+                flexDirection: "column",
+                justifyContent: "space-between",
+                alignItems: "flex-end",
+                flexGrow: 1,
+              }}
+            >
+              <Stepper
+                id="desktop-stepper"
+                activeStep={activeStep}
+                sx={{ width: "100%", height: 40 }}
+              >
+                {steps.map((label) => (
+                  <Step
+                    sx={{ ":first-child": { pl: 0 }, ":last-child": { pr: 0 } }}
+                    key={label}
+                  >
+                    <StepLabel>{label}</StepLabel>
+                  </Step>
+                ))}
+              </Stepper>
+            </Box>
+          </Box>
+          <Card sx={{ display: { xs: "flex", md: "none" }, width: "100%" }}>
+            <CardContent
+              sx={{
+                display: "flex",
+                width: "100%",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <InfoMobile />
+            </CardContent>
+          </Card>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              flexGrow: 1,
+              width: "100%",
+              maxWidth: { sm: "100%", md: 600 },
+              gap: { xs: 5, md: "none" },
+            }}
+          >
+            <Stepper
+              id="mobile-stepper"
+              activeStep={activeStep}
+              alternativeLabel
+              sx={{ display: { sm: "flex", md: "none" } }}
+            >
               {steps.map((label) => (
-                <Step key={label}>
-                  <StepLabel>{label}</StepLabel>
+                <Step
+                  sx={{
+                    ":first-child": { pl: 0 },
+                    ":last-child": { pr: 0 },
+                    "& .MuiStepConnector-root": { top: { xs: 6, sm: 12 } },
+                  }}
+                  key={label}
+                >
+                  <StepLabel
+                    sx={{
+                      ".MuiStepLabel-labelContainer": { maxWidth: "70px" },
+                    }}
+                  >
+                    {label}
+                  </StepLabel>
                 </Step>
               ))}
             </Stepper>
-          </Box>
-
-          {getStepContent(activeStep)}
-
-          <Box sx={{ display: "flex", flexGrow: 1, width: "100%", maxWidth: 600, justifyContent: "space-between" }}>
-            {activeStep !== 0 && (
-              <Button startIcon={<ChevronLeftRoundedIcon />} onClick={handleBack} variant="text">
-                Previous
-              </Button>
+            {activeStep === steps.length ? (
+              <Stack spacing={2} useFlexGap>
+                <Typography variant="h1">🏥</Typography>
+                <Typography variant="h5">Discuss your diagnosis</Typography>
+                <Typography variant="body1" sx={{ color: "text.secondary" }}>
+                  <strong>Coming Soon!</strong>
+                </Typography>
+              </Stack>
+            ) : (
+              <React.Fragment>
+                {getStepContent(activeStep)}
+                <Box
+                  sx={[
+                    {
+                      display: "flex",
+                      flexDirection: { xs: "column-reverse", sm: "row" },
+                      alignItems: "end",
+                      flexGrow: 1,
+                      gap: 1,
+                      pb: { xs: 12, sm: 0 },
+                      mt: { xs: 2, sm: 0 },
+                      mb: "60px",
+                    },
+                    activeStep !== 0
+                      ? { justifyContent: "space-between" }
+                      : { justifyContent: "flex-end" },
+                  ]}
+                >
+                  {activeStep !== 0 && (
+                    <Button
+                      startIcon={<ChevronLeftRoundedIcon />}
+                      onClick={handleBack}
+                      variant="text"
+                      sx={{ display: { xs: "none", sm: "flex" } }}
+                    >
+                      Previous
+                    </Button>
+                  )}
+                  {activeStep !== 0 && (
+                    <Button
+                      startIcon={<ChevronLeftRoundedIcon />}
+                      onClick={handleBack}
+                      variant="outlined"
+                      fullWidth
+                      sx={{ display: { xs: "flex", sm: "none" } }}
+                    >
+                      Previous
+                    </Button>
+                  )}
+                  <Button
+                    variant="contained"
+                    endIcon={<ChevronRightRoundedIcon />}
+                    onClick={handleNext}
+                    sx={{ width: { xs: "100%", sm: "fit-content" } }}
+                  >
+                    {activeStep === steps.length - 1
+                      ? "Continue Conversation"
+                      : "Next"}
+                  </Button>
+                </Box>
+              </React.Fragment>
             )}
-            <Button variant="contained" endIcon={<ChevronRightRoundedIcon />} onClick={handleNext}>
-              {activeStep === steps.length - 1 ? "Continue Conversation" : "Next"}
-            </Button>
           </Box>
         </Grid>
       </Grid>
