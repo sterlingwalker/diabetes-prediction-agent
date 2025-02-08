@@ -3,12 +3,16 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import pickle
-import os
 import logging
 import json
-from fastapi import Depends
+from langchain.chains import LLMChain
+from langchain.chat_models import ChatOpenAI
+from langchain.prompts import PromptTemplate
+from dotenv import load_dotenv
+import os
 
-
+# Load environment variables
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -73,8 +77,8 @@ def predict_patient(patient_data: dict):
         risk_probability = model.predict_proba(patient_scaled)[0][1] * 100
         
         return {
-            "predictedRisk": "Diabetes" if risk == 1 else "No Diabetes",
-            "riskProbability": f"{risk_probability:.2f}"
+            "PredictedRisk": "Diabetes" if risk == 1 else "No Diabetes",
+            "RiskProbability": f"{risk_probability:.2f}%"
         }
     except Exception as e:
         logging.error("Prediction error: %s", str(e))
@@ -97,31 +101,78 @@ async def predict(patient: dict = Depends(parse_patient_data)):
         logging.error(f"Error processing request: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Initialize OpenAI model with API Key
+openai_api_key = os.getenv("OPENAI_API_KEY")  # Load API key from environment variables
+llm = ChatOpenAI(temperature=0.7, openai_api_key=openai_api_key)
 
+# Define expert prompts
+endocrinologist_prompt = PromptTemplate(
+    input_variables=['patient'],
+    template=(
+        "As an endocrinologist, provide a treatment plan for the following patient. "
+        "Here is the patient data: {patient}\n\n"
+        "Provide actionable and specific recommendations."
+    )
+)
+dietitian_prompt = PromptTemplate(
+    input_variables=['patient'],
+    template=(
+        "As a dietitian, create a dietary plan for the following patient. "
+        "Here is the patient data: {patient}\n\n"
+        "Focus on managing diabetes and improving health."
+    )
+)
+fitness_prompt = PromptTemplate(
+    input_variables=['patient'],
+    template=(
+        "As a fitness expert, create an exercise plan for the following patient. "
+        "Here is the patient data: {patient}\n\n"
+        "Focus on managing diabetes and overall fitness."
+    )
+)
 
-# API endpoint for recommendations
+# Define expert chains
+endocrinologist_chain = LLMChain(llm=llm, prompt=endocrinologist_prompt)
+dietitian_chain = LLMChain(llm=llm, prompt=dietitian_prompt)
+fitness_chain = LLMChain(llm=llm, prompt=fitness_prompt)
+
+# Meta-agent prompt to consolidate expert recommendations
+meta_agent_prompt = PromptTemplate(
+    input_variables=['endocrinologist', 'dietitian', 'fitness', 'patient'],
+    template=(
+        "You are a health consultant consolidating recommendations from multiple experts for a patient. "
+        "Here is the patient data: {patient}\n\n"
+        "Endocrinologist Recommendation:\n{endocrinologist}\n\n"
+        "Dietitian Recommendation:\n{dietitian}\n\n"
+        "Fitness Expert Recommendation:\n{fitness}\n\n"
+        "Based on these expert recommendations, provide a final consolidated plan for the patient."
+    )
+)
+meta_agent_chain = LLMChain(llm=llm, prompt=meta_agent_prompt)
+
 @app.post("/recommendations")
 async def get_recommendations(patient: PatientData):
     try:
-        patient_str = str(patient.dict())
-        
-        # Dummy placeholders for expert chains (modify as needed)
-        endocrinologist_rec = "Endocrinologist recommendation based on patient data"
-        dietitian_rec = "Dietitian recommendation based on patient data"
-        fitness_rec = "Fitness expert recommendation based on patient data"
+        patient_data = patient.dict()
 
-        final_rec = (
-            f"Final consolidated plan:\n\n"
-            f"Endocrinologist: {endocrinologist_rec}\n"
-            f"Dietitian: {dietitian_rec}\n"
-            f"Fitness: {fitness_rec}"
+        # Get expert recommendations
+        endocrinologist_recommendation = endocrinologist_chain.run(patient=str(patient_data))
+        dietitian_recommendation = dietitian_chain.run(patient=str(patient_data))
+        fitness_recommendation = fitness_chain.run(patient=str(patient_data))
+
+        # Consolidate recommendations
+        final_recommendation = meta_agent_chain.run(
+            endocrinologist=endocrinologist_recommendation,
+            dietitian=dietitian_recommendation,
+            fitness=fitness_recommendation,
+            patient=str(patient_data)
         )
 
         return {
-            "endocrinologistRecommendation": endocrinologist_rec,
-            "dietitianRecommendation": dietitian_rec,
-            "fitnessRecommendation": fitness_rec,
-            "finalRecommendation": final_rec
+            "EndocrinologistRecommendation": endocrinologist_recommendation,
+            "DietitianRecommendation": dietitian_recommendation,
+            "FitnessRecommendation": fitness_recommendation,
+            "FinalRecommendation": final_recommendation
         }
     except Exception as e:
         logging.error(f"Error processing recommendations: {str(e)}")
