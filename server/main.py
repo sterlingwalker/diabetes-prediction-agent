@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import pickle
@@ -11,6 +11,7 @@ from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 import uvicorn
+
 
 # Load environment variables
 load_dotenv()
@@ -33,14 +34,14 @@ app.add_middleware(
 
 # Define Pydantic model for input validation
 class PatientData(BaseModel):
-    Pregnancies: float
-    Glucose: float
-    BloodPressure: float
-    SkinThickness: float
-    Insulin: float
-    BMI: float
-    DiabetesPedigreeFunction: float
-    Age: float
+    Pregnancies: float = Field(default=0.0)
+    Glucose: float = Field(default=0.0)
+    BloodPressure: float = Field(default=0.0)
+    SkinThickness: float = Field(default=0.0)
+    Insulin: float = Field(default=0.0)
+    BMI: float = Field(default=0.0)
+    DiabetesPedigreeFunction: float = Field(default=0.0)
+    Age: float = Field(default=0.0)
 
 # Load the pre-trained scaler and model
 try:
