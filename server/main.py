@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import pickle
@@ -11,6 +11,7 @@ from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 import uvicorn
+from typing import Union
 
 
 # Load environment variables
@@ -32,16 +33,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Define Pydantic model for input validation
+
+
 class PatientData(BaseModel):
-    Pregnancies: float = Field(default=0.0)
-    Glucose: float = Field(default=0.0)
-    BloodPressure: float = Field(default=0.0)
-    SkinThickness: float = Field(default=0.0)
-    Insulin: float = Field(default=0.0)
-    BMI: float = Field(default=0.0)
-    DiabetesPedigreeFunction: float = Field(default=0.0)
-    Age: float = Field(default=0.0)
+    Pregnancies: Union[float, str] = 0.0
+    Glucose: Union[float, str] = 0.0
+    BloodPressure: Union[float, str] = 0.0
+    SkinThickness: Union[float, str] = 0.0
+    Insulin: Union[float, str] = 0.0
+    BMI: Union[float, str] = 0.0
+    DiabetesPedigreeFunction: Union[float, str] = 0.0
+    Age: Union[float, str] = 0.0
+
 
 # Load the pre-trained scaler and model
 try:
@@ -89,9 +92,9 @@ def predict_patient(patient_data: dict):
 @app.post("/predict")
 async def predict(patient: PatientData):
     try:
-        # Convert input values to float, defaulting empty values to 0
+        # Convert input values to float, defaulting empty strings to 0
         patient_data = {
-            key: float(value) if value not in ["", None] else 0.0
+            key: float(value) if isinstance(value, (int, float)) or value.strip() else 0.0
             for key, value in patient.dict().items()
         }
 
@@ -152,8 +155,13 @@ meta_agent_chain = LLMChain(llm=llm, prompt=meta_agent_prompt)
 @app.post("/recommendations")
 async def get_recommendations(patient: PatientData):
     try:
-        patient_data = patient.dict()
-        logger.info(f"Received patient data: {json.dumps(patient_data, indent=2)}")
+        # Convert input values to float, defaulting empty strings to 0.0
+        patient_data = {
+            key: float(value) if isinstance(value, (int, float)) or value.strip() else 0.0
+            for key, value in patient.dict().items()
+        }
+
+        logger.info(f"Received patient data with defaults: {patient_data}")
 
         # Run expert chains
         endocrinologist_recommendation = endocrinologist_chain.run(patient=str(patient_data))
