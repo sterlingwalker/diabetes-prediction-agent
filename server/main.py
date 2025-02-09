@@ -86,20 +86,27 @@ def predict_patient(patient_data: dict):
         raise
 
 @app.post("/predict")
-async def predict(patient: dict):
-    """Handles prediction requests with proper parsing."""
+async def predict(patient: PatientData):
     try:
-        patient = {key: float(value) for key, value in patient.items()}  # Convert input values to float
-        logger.info(f"Received valid patient data: {patient}")
-        result = predict_patient(patient)
+        # Convert input values to float, defaulting empty values to 0
+        patient_data = {
+            key: float(value) if value not in ["", None] else 0.0
+            for key, value in patient.dict().items()
+        }
+
+        logger.info(f"Received valid patient data with defaults: {patient_data}")
+
+        result = predict_patient(patient_data)
         logger.info(f"Prediction result: {result}")
         return result
+
     except ValueError as e:
         logger.error(f"Invalid input: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
     except Exception as e:
         logger.error(f"Error processing request: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # Initialize OpenAI model with API Key
 openai_api_key = os.getenv("OPENAI_API_KEY")
