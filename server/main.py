@@ -82,8 +82,8 @@ def predict_patient(patient_data: dict):
         risk_probability = model.predict_proba(patient_scaled)[0][1] * 100
         
         return {
-            "PredictedRisk": "Diabetes" if risk == 1 else "No Diabetes",
-            "RiskProbability": f"{risk_probability:.2f}%"
+            "predictedRisk": "Diabetes" if risk == 1 else "No Diabetes",
+            "riskProbability": f"{risk_probability:.2f}%"
         }
     except Exception as e:
         logger.error("Prediction error: %s", str(e))
@@ -181,10 +181,10 @@ async def get_recommendations(patient: PatientData):
         )
 
         response_data = {
-            "EndocrinologistRecommendation": endocrinologist_recommendation,
-            "DietitianRecommendation": dietitian_recommendation,
-            "FitnessRecommendation": fitness_recommendation,
-            "FinalRecommendation": final_recommendation
+            "rndocrinologistRecommendation": endocrinologist_recommendation,
+            "dietitianRecommendation": dietitian_recommendation,
+            "fitnessRecommendation": fitness_recommendation,
+            "finalRecommendation": final_recommendation
         }
 
         logger.info(f"Final Response: {json.dumps(response_data, indent=2)}")
