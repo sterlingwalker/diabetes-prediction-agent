@@ -6,13 +6,24 @@ import Typography from "@mui/material/Typography";
 export default function Review({ response }) {
   return (
     <div>
-      <Typography variant="subtitle2" gutterBottom>
+      <Typography
+        sx={{ fontWeight: 400, fontSize: "20px", marginBottom: "16px" }}
+        variant="subtitle2"
+        gutterBottom
+      >
         Recommendations
       </Typography>
       <Grid container>
         <React.Fragment>
-          <Stack direction="column" spacing={1} sx={{ width: "100%", mb: 1 }}>
-            <Typography variant="body1" sx={{ color: "text.secondary" }}>
+          <Stack direction="column" spacing={1} sx={{ width: "100%", mb: 5 }}>
+            <Typography
+              variant="body1"
+              sx={{
+                fontWeight: 400,
+                fontSize: "16px",
+                color: "text.secondary",
+              }}
+            >
               Endocrinologist:
             </Typography>
             <Typography
@@ -24,8 +35,15 @@ export default function Review({ response }) {
           </Stack>
         </React.Fragment>
         <React.Fragment>
-          <Stack direction="column" spacing={1} sx={{ width: "100%", mb: 1 }}>
-            <Typography variant="body1" sx={{ color: "text.secondary" }}>
+          <Stack direction="column" spacing={1} sx={{ width: "100%", mb: 5 }}>
+            <Typography
+              variant="body1"
+              sx={{
+                fontWeight: 400,
+                fontSize: "16px",
+                color: "text.secondary",
+              }}
+            >
               Dietician:
             </Typography>
             <Typography
@@ -37,8 +55,15 @@ export default function Review({ response }) {
           </Stack>
         </React.Fragment>
         <React.Fragment>
-          <Stack direction="column" spacing={1} sx={{ width: "100%", mb: 1 }}>
-            <Typography variant="body1" sx={{ color: "text.secondary" }}>
+          <Stack direction="column" spacing={1} sx={{ width: "100%", mb: 5 }}>
+            <Typography
+              variant="body1"
+              sx={{
+                fontWeight: 400,
+                fontSize: "16px",
+                color: "text.secondary",
+              }}
+            >
               Fitness Trainer:
             </Typography>
             <Typography
@@ -50,8 +75,15 @@ export default function Review({ response }) {
           </Stack>
         </React.Fragment>
         <React.Fragment>
-          <Stack direction="column" spacing={1} sx={{ width: "100%", mb: 1 }}>
-            <Typography variant="body1" sx={{ color: "text.secondary" }}>
+          <Stack direction="column" spacing={1} sx={{ width: "100%", mb: 5 }}>
+            <Typography
+              variant="body1"
+              sx={{
+                fontWeight: 400,
+                fontSize: "16px",
+                color: "text.secondary",
+              }}
+            >
               Overall Recommendation:
             </Typography>
             <Typography

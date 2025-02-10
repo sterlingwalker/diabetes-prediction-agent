@@ -33,12 +33,12 @@ export default function CalculationProgress({
   error,
 }) {
   const isDiabetic = prediction?.predictedRisk === "Diabetes";
-  const riskProbability = prediction?.riskProbability;
+  const riskProbability = prediction?.riskProbability.replace("%", "");
 
   const determineRiskColor = () => {
-    if (riskProbability < 30) {
+    if (riskProbability < 10) {
       return "success";
-    } else if (riskProbability < 70) {
+    } else if (riskProbability < 50) {
       return "warning";
     } else {
       return "error";
