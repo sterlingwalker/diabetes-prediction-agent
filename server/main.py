@@ -220,7 +220,7 @@ async def get_recommendations(patient: PatientData):
         )
 
         response_data = {
-            "rndocrinologistRecommendation": endocrinologist_recommendation,
+            "endocrinologistRecommendation": endocrinologist_recommendation,
             "dietitianRecommendation": dietitian_recommendation,
             "fitnessRecommendation": fitness_recommendation,
             "finalRecommendation": final_recommendation
