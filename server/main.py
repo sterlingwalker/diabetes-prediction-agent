@@ -1,3 +1,4 @@
+import requests
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,11 +10,12 @@ import json
 import os
 from dotenv import load_dotenv
 from langchain.chains import LLMChain
-from langchain.chat_models import ChatOpenAI
+from langchain_community.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 import uvicorn
 from typing import Union
 from sklearn.impute import SimpleImputer
+
 
 # Load environment variables
 load_dotenv()
@@ -151,6 +153,7 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     return response
 
+
 # Initialize OpenAI model with API Key
 openai_api_key = os.getenv("OPENAI_API_KEY")
 if not openai_api_key:
@@ -158,80 +161,156 @@ if not openai_api_key:
 
 llm = ChatOpenAI(temperature=0.7, openai_api_key=openai_api_key)
 
-# Define expert prompts
-endocrinologist_prompt = PromptTemplate(
-    input_variables=['patient'],
-    template="As an endocrinologist, provide a treatment plan for the following patient: {patient}"
-)
-dietitian_prompt = PromptTemplate(
-    input_variables=['patient'],
-    template="As a dietitian, create a dietary plan for the following patient: {patient}"
-)
-fitness_prompt = PromptTemplate(
-    input_variables=['patient'],
-    template="As a fitness expert, create an exercise plan for the following patient: {patient}"
-)
 
-# Define expert chains
-endocrinologist_chain = LLMChain(llm=llm, prompt=endocrinologist_prompt)
-dietitian_chain = LLMChain(llm=llm, prompt=dietitian_prompt)
-fitness_chain = LLMChain(llm=llm, prompt=fitness_prompt)
+# Biomedical Evidence Fetching Function
+def get_biomedical_evidence(patient_data):
+    query_parts = ["diabetes treatment"]
+    if patient_data.get("Glucose"):
+        query_parts.append(f"glucose {patient_data['Glucose']}")
+    if patient_data.get("BMI"):
+        query_parts.append(f"BMI {patient_data['BMI']}")
+    
+    query = " ".join(query_parts)
+    logger.info(f"🔍 Searching PubMed for: {query}")
 
-# Meta-agent prompt to consolidate expert recommendations
-meta_agent_prompt = PromptTemplate(
-    input_variables=['endocrinologist', 'dietitian', 'fitness', 'patient'],
-    template=(
-        "You are a health consultant consolidating recommendations for a patient. "
-        "Patient Data: {patient}\n\n"
-        "Endocrinologist Recommendation:\n{endocrinologist}\n\n"
-        "Dietitian Recommendation:\n{dietitian}\n\n"
-        "Fitness Expert Recommendation:\n{fitness}\n\n"
-        "Provide a final consolidated plan for the patient."
+    pubmed_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term={query}&retmax=5&retmode=json"
+    response = requests.get(pubmed_url).json()
+    pubmed_ids = response.get("esearchresult", {}).get("idlist", [])
+
+    evidence = []
+    for pmid in pubmed_ids:
+        detail_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id={pmid}&retmode=json"
+        detail_response = requests.get(detail_url).json()
+        title = detail_response.get("result", {}).get(pmid, {}).get("title", "No title found")
+        evidence.append(title)
+
+    logger.info(f"📄 Extracted Biomedical Evidence: {evidence}")
+    return evidence
+
+
+
+# Create Patient Context for LLM
+def create_dynamic_context(patient_data, evidence, risk_result):
+    context = (
+        f"**Patient Details:**\n"
+        f"- Age: {patient_data.get('Age', 'Unknown')}\n"
+        f"- BMI: {patient_data.get('BMI', 'Unknown')}\n"
+        f"- Glucose: {patient_data.get('Glucose', 'Unknown')}\n"
+        f"- Diabetes Prediction: {risk_result.get('predictedRisk', 'Unknown')} "
+        f"({risk_result.get('riskProbability', 'N/A')})\n\n"
+        "**Relevant Biomedical Evidence:**\n" +
+        "\n".join(f"- {e}" for e in evidence)
     )
-)
-meta_agent_chain = LLMChain(llm=llm, prompt=meta_agent_prompt)
+    return context
 
+
+# Generate Expert Recommendations
+def get_expert_recommendations(patient_data, risk_result):
+    evidence = get_biomedical_evidence(patient_data)
+    context = create_dynamic_context(patient_data, evidence, risk_result)
+
+    expert_prompts = {
+        "Endocrinologist": PromptTemplate(
+            input_variables=['patient', 'context', 'risk_result'],
+            template=(
+                "As an endocrinologist, provide a diabetes treatment plan.\n"
+                "Patient Data: {patient}\n\n"
+                "Risk Result: {risk_result}\n\n"
+                "Based on the following biomedical evidence:\n{context}\n\n"
+                "Provide a structured treatment plan."
+            )
+        ),
+        "Dietitian": PromptTemplate(
+            input_variables=['patient', 'context', 'risk_result'],
+            template=(
+                "As a dietitian, create a meal plan for the following patient:\n"
+                "Patient Data: {patient}\n\n"
+                "Risk Result: {risk_result}\n\n"
+                "Based on the following biomedical evidence:\n{context}\n\n"
+                "Provide structured dietary recommendations."
+            )
+        ),
+        "Fitness Expert": PromptTemplate(
+            input_variables=['patient', 'context', 'risk_result'],
+            template=(
+                "As a fitness expert, create a weekly exercise plan:\n"
+                "Patient Data: {patient}\n\n"
+                "Risk Result: {risk_result}\n\n"
+                "Based on the following biomedical evidence:\n{context}\n\n"
+                "Provide structured exercise recommendations."
+            )
+        )
+    }
+
+    expert_recommendations = {}
+    for expert, prompt in expert_prompts.items():
+        expert_chain = LLMChain(llm=llm, prompt=prompt)
+        expert_recommendations[expert] = expert_chain.run(
+            patient=str(patient_data), context=context, risk_result=str(risk_result)
+        )
+    
+    return expert_recommendations
+              
+# Generate Final Consolidated Recommendation
+def get_final_recommendation(patient_data, expert_recommendations, risk_result):
+    meta_agent_prompt = PromptTemplate(
+        input_variables=['endocrinologist', 'dietitian', 'fitness', 'patient', 'risk_result'],
+        template=(
+            "You are a healthcare consultant consolidating expert recommendations.\n"
+            "Patient Data: {patient}\n\n"
+            "Risk Result: {risk_result}\n\n"
+            "**Expert Recommendations:**\n\n"
+            "**Endocrinologist Recommendation:**\n{endocrinologist}\n\n"
+            "**Dietitian Recommendation:**\n{dietitian}\n\n"
+            "**Fitness Expert Recommendation:**\n{fitness}\n\n"
+            "Create a final health plan integrating all recommendations."
+        )
+    )
+
+    meta_agent_chain = LLMChain(llm=llm, prompt=meta_agent_prompt)
+
+    final_recommendation = meta_agent_chain.run(
+        endocrinologist=expert_recommendations["Endocrinologist"],
+        dietitian=expert_recommendations["Dietitian"],
+        fitness=expert_recommendations["Fitness Expert"],
+        patient=str(patient_data),
+        risk_result=str(risk_result)
+    )
+
+    return final_recommendation
+
+# FastAPI Route for Recommendations
 @app.post("/recommendations")
 async def get_recommendations(patient: PatientData):
     try:
-        # Convert input values to float, defaulting empty strings to 0.0
         patient_data = {
             key: float(value) if isinstance(value, (int, float)) or value.strip() else 0.0
             for key, value in patient.dict().items()
         }
+        logger.info(f"Received patient data for recommendations: {patient_data}")
 
-        logger.info(f"Received patient data with defaults: {patient_data}")
+        # Use existing prediction function to get risk result
+        risk_result = predict_diabetes_risk(patient_data)
+        logger.info(f"Risk Prediction: {risk_result}")
 
-        # Run expert chains
-        endocrinologist_recommendation = endocrinologist_chain.run(patient=str(patient_data))
-        dietitian_recommendation = dietitian_chain.run(patient=str(patient_data))
-        fitness_recommendation = fitness_chain.run(patient=str(patient_data))
+        # Generate expert recommendations
+        expert_recommendations = get_expert_recommendations(patient_data, risk_result)
+        logger.info(f"Expert Recommendations: {expert_recommendations}")
 
-        logger.info(f"Endocrinologist: {endocrinologist_recommendation}")
-        logger.info(f"Dietitian: {dietitian_recommendation}")
-        logger.info(f"Fitness: {fitness_recommendation}")
+        # Generate final consolidated recommendation
+        final_recommendation = get_final_recommendation(patient_data, expert_recommendations, risk_result)
 
-        # Consolidate recommendations
-        final_recommendation = meta_agent_chain.run(
-            endocrinologist=endocrinologist_recommendation,
-            dietitian=dietitian_recommendation,
-            fitness=fitness_recommendation,
-            patient=str(patient_data)
-        )
-
-        response_data = {
-            "endocrinologistRecommendation": endocrinologist_recommendation,
-            "dietitianRecommendation": dietitian_recommendation,
-            "fitnessRecommendation": fitness_recommendation,
+        return {
+            "endocrinologistRecommendation": expert_recommendations["Endocrinologist"],
+            "dietitianRecommendation": expert_recommendations["Dietitian"],
+            "fitnessRecommendation": expert_recommendations["Fitness Expert"],
             "finalRecommendation": final_recommendation
         }
-
-        logger.info(f"Final Response: {json.dumps(response_data, indent=2)}")
-        return response_data
 
     except Exception as e:
         logger.error(f"Error processing recommendations: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))  # Ensure compatibility with Render
