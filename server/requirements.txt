@@ -8,3 +8,4 @@ shap
 fastapi[standard]
 pydantic
 python-dotenv
+lightgbm
