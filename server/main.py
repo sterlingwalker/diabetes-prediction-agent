@@ -2,7 +2,8 @@ from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
-import pickle
+import numpy as np
+import joblib
 import logging
 import json
 import os
@@ -12,7 +13,7 @@ from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 import uvicorn
 from typing import Union
-
+from sklearn.impute import SimpleImputer
 
 # Load environment variables
 load_dotenv()
@@ -33,8 +34,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-
 class PatientData(BaseModel):
     Pregnancies: Union[float, str] = 0.0
     Glucose: Union[float, str] = 0.0
@@ -46,15 +45,94 @@ class PatientData(BaseModel):
     Age: Union[float, str] = 0.0
 
 
-# Load the pre-trained scaler and model
+
+# Load the LightGBM and Random Forest models
 try:
-    with open("scaler.pkl", "rb") as f:
-        scaler = pickle.load(f)
-    with open("model.pkl", "rb") as f:
-        model = pickle.load(f)
+    lgbm_model = joblib.load("lightgbm_model.pkl")
+    tuned_rf_model = joblib.load("tuned_rf_model.pkl")
 except Exception as e:
-    logger.error("Error loading model/scaler: %s", str(e))
-    raise Exception("Error loading model/scaler. Ensure they are trained and saved correctly.") from e
+    logger.error("Error loading models: %s", str(e))
+    raise Exception("Error loading LightGBM or Random Forest models.") from e
+
+# Define a prediction function with model selection logic
+def predict_diabetes_risk(patient_data: dict):
+    try:
+        lgbm_features = ['Glucose', 'BMI', 'Age']
+        rf_features = ['Glucose', 'BMI', 'Age', 'Pregnancies', 'DiabetesPedigreeFunction', 'BloodPressure', 'Insulin']
+        critical_features = ['Glucose', 'BMI', 'Age']
+        features_to_check = ['BloodPressure', 'Insulin', 'Pregnancies', 'DiabetesPedigreeFunction', 'BMI', 'Glucose']
+
+        # Convert data to DataFrame and handle missing values
+        patient_df = pd.DataFrame([patient_data])
+        patient_df[features_to_check] = patient_df[features_to_check].replace(0, np.nan)
+
+        # Select model based on missing values
+        if patient_df.isnull().any().any():
+            selected_model, selected_features = lgbm_model, lgbm_features
+            model_used = "LightGBM"
+            logger.info("Using LightGBM (Missing Values Detected)")
+        else:
+            selected_model, selected_features = tuned_rf_model, rf_features
+            model_used = "Tuned Random Forest"
+            logger.info("Using Tuned Random Forest (Complete Data Detected)")
+
+        # Keep only selected features
+        patient_df = patient_df[selected_features]
+
+        # Handle missing values
+        if model_used == "LightGBM":
+            missing_critical = patient_df[critical_features].isnull().any()
+            if missing_critical.any():
+                logger.info("Imputing Missing Critical Features for LightGBM...")
+                for feature in critical_features:
+                    if patient_df[feature].isnull().all():
+                        default_values = {'Glucose': 120, 'BMI': 25, 'Age': 40}
+                        patient_df[feature] = default_values[feature]
+                    else:
+                        imputer = SimpleImputer(strategy='median')
+                        patient_df[[feature]] = imputer.fit_transform(patient_df[[feature]])
+        elif model_used == "Tuned Random Forest":
+            if patient_df.isnull().any().any():
+                imputer = SimpleImputer(strategy='median')
+                patient_df = pd.DataFrame(imputer.fit_transform(patient_df), columns=patient_df.columns)
+
+        # Make predictions
+        risk = selected_model.predict(patient_df)[0]
+        risk_probability = selected_model.predict_proba(patient_df)[:, 1][0] * 100
+
+        return {
+            "predictedRisk": "Diabetes" if risk == 1 else "No Diabetes",
+            "riskProbability": f"{risk_probability:.2f}%",
+            "modelUsed": model_used
+        }
+    except Exception as e:
+        logger.error("Prediction error: %s", str(e))
+        raise
+
+@app.post("/predict")
+async def predict(patient: PatientData):
+    try:
+        # Convert input values to float, defaulting empty strings to 0
+        patient_data = {
+            key: float(value) if isinstance(value, (int, float)) or value.strip() else 0.0
+            for key, value in patient.dict().items()
+        }
+
+        logger.info(f"Received patient data with defaults: {patient_data}")
+
+        result = predict_diabetes_risk(patient_data)
+        logger.info(f"Prediction result: {result}")
+        return result
+
+    except ValueError as e:
+        logger.error(f"Invalid input: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error processing request: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
 
 # Middleware to log requests and prevent response stream errors
 @app.middleware("http")
@@ -72,45 +150,6 @@ async def log_requests(request: Request, call_next):
 
     response = await call_next(request)
     return response
-
-# Define a prediction function
-def predict_patient(patient_data: dict):
-    try:
-        patient_df = pd.DataFrame([patient_data])
-        patient_scaled = scaler.transform(patient_df)
-        risk = model.predict(patient_scaled)[0]
-        risk_probability = model.predict_proba(patient_scaled)[0][1] * 100
-        
-        return {
-            "predictedRisk": "Diabetes" if risk == 1 else "No Diabetes",
-            "riskProbability": f"{risk_probability:.2f}%"
-        }
-    except Exception as e:
-        logger.error("Prediction error: %s", str(e))
-        raise
-
-@app.post("/predict")
-async def predict(patient: PatientData):
-    try:
-        # Convert input values to float, defaulting empty strings to 0
-        patient_data = {
-            key: float(value) if isinstance(value, (int, float)) or value.strip() else 0.0
-            for key, value in patient.dict().items()
-        }
-
-        logger.info(f"Received valid patient data with defaults: {patient_data}")
-
-        result = predict_patient(patient_data)
-        logger.info(f"Prediction result: {result}")
-        return result
-
-    except ValueError as e:
-        logger.error(f"Invalid input: {str(e)}")
-        raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
-    except Exception as e:
-        logger.error(f"Error processing request: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 
 # Initialize OpenAI model with API Key
 openai_api_key = os.getenv("OPENAI_API_KEY")
