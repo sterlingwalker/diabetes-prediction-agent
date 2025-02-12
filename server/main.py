@@ -13,7 +13,7 @@ from langchain.chains import LLMChain
 from langchain_community.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 import uvicorn
-from typing import Union
+from typing import Union, List, Dict
 from sklearn.impute import SimpleImputer
 
 
