@@ -46,7 +46,14 @@ class PatientData(BaseModel):
     DiabetesPedigreeFunction: Union[float, str] = 0.0
     Age: Union[float, str] = 0.0
 
-
+# Define Chat Request Model
+class ChatRequest(BaseModel):
+    history: List[Dict[str, str]]  # Chat history
+    user_input: str  # User's latest message
+    patient_data: Dict[str, float]  # Patient details
+    recommendations: Dict[str, str]  # Expert recommendations
+    predicted_risk: str  # Predicted risk result (e.g., "Diabetes" or "No Diabetes")
+    risk_probability: str  # Probability score (e.g., "72.50%")
 
 # Load the LightGBM and Random Forest models
 try:
@@ -55,6 +62,26 @@ try:
 except Exception as e:
     logger.error("Error loading models: %s", str(e))
     raise Exception("Error loading LightGBM or Random Forest models.") from e
+
+# Chat Agent Prompt with Risk & Probability
+chat_prompt = PromptTemplate(
+    input_variables=['history', 'user_input', 'patient_data', 'recommendations', 'predicted_risk', 'risk_probability'],
+    template=(
+        "You are a medical AI assistant helping a patient manage their health.\n\n"
+        "**Patient Details:**\n"
+        "{patient_data}\n\n"
+        "**Predicted Risk:** {predicted_risk}\n"
+        "**Risk Probability:** {risk_probability}\n\n"
+        "**Expert Recommendations:**\n"
+        "{recommendations}\n\n"
+        "**Conversation History:**\n"
+        "{history}\n\n"
+        "Now, the user is asking:\n{user_input}\n\n"
+        "Provide an informative response considering the patient's data, medical risk, and expert recommendations."
+    )
+)
+
+chat_chain = LLMChain(llm=llm, prompt=chat_prompt)
 
 # Define a prediction function with model selection logic
 def predict_diabetes_risk(patient_data: dict):
@@ -312,6 +339,39 @@ async def get_recommendations(patient: PatientData):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/chat")
+async def chat(chat_request: ChatRequest):
+    try:
+        # Format conversation history
+        formatted_history = "\n".join(
+            [f"**{msg['role'].capitalize()}**: {msg['content']}" for msg in chat_request.history]
+        )
+
+        # Format patient data, recommendations, and risk
+        formatted_patient_data = "\n".join([f"- {key}: {value}" for key, value in chat_request.patient_data.items()])
+        formatted_recommendations = "\n".join([f"- {key}: {value}" for key, value in chat_request.recommendations.items()])
+
+        # Generate response from LLM
+        response = chat_chain.run(
+            history=formatted_history,
+            user_input=chat_request.user_input,
+            patient_data=formatted_patient_data,
+            recommendations=formatted_recommendations,
+            predicted_risk=chat_request.predicted_risk,
+            risk_probability=chat_request.risk_probability
+        )
+       # Append assistant's response to chat history
+        chat_request.history.append({"role": "assistant", "content": response})
+
+        return {
+            "response": response,
+            "updated_history": chat_request.history
+        }
+
+    except Exception as e:
+        logger.error(f"Error processing chat request: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+        
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))  # Ensure compatibility with Render
     uvicorn.run(app, host="0.0.0.0", port=port, timeout_keep_alive=300)
