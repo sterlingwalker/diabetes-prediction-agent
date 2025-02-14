@@ -20,6 +20,11 @@ from sklearn.impute import SimpleImputer
 # Load environment variables
 load_dotenv()
 
+
+# Define `openai_api_key` BEFORE using it
+openai_api_key = os.getenv("OPENAI_API_KEY")
+
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
