@@ -51,14 +51,17 @@ class PatientData(BaseModel):
     DiabetesPedigreeFunction: Union[float, str] = 0.0
     Age: Union[float, str] = 0.0
 
+
 # Define Chat Request Model
 class ChatRequest(BaseModel):
-    history: List[Dict[str, str]]  # Chat history
-    user_input: str  # User's latest message
-    patient_data: Dict[str, float]  # Patient details
-    recommendations: Dict[str, str]  # Expert recommendations
-    predicted_risk: str  # Predicted risk result (e.g., "Diabetes" or "No Diabetes")
-    risk_probability: str  # Probability score (e.g., "72.50%")
+    history: List[Dict[str, str]]  # Ensure a valid chat history structure
+    user_input: str
+    patient_data: Dict[str, Union[str, float]]
+    recommendations: Dict[str, str]
+    predicted_risk: str
+    risk_probability: str  # Expecting a stringified float (e.g., "69.23")
+
+
 
 # Load the LightGBM and Random Forest models
 try:
@@ -347,10 +350,11 @@ async def get_recommendations(patient: PatientData):
         logger.error(f"Error processing recommendations: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/chat")
 async def chat(chat_request: ChatRequest):
     try:
-        # ✅ Clean `patient_data`: Convert empty strings to `0.0` and remove invalid characters
+        # ✅ Validate and Clean `patient_data`
         cleaned_patient_data = {}
         for key, value in chat_request.patient_data.items():
             try:
@@ -360,10 +364,11 @@ async def chat(chat_request: ChatRequest):
                 logger.error(f"Invalid patient data input for {key}: {value}")
                 raise HTTPException(status_code=400, detail=f"Invalid input for {key}: {value}")
 
-        # ✅ Ensure `recommendations` are valid strings
+
+        # ✅ Ensure `recommendations` are strings
         cleaned_recommendations = {k: str(v) if isinstance(v, str) else "" for k, v in chat_request.recommendations.items()}
 
-        # ✅ Validate `history`: Ensure every message contains `role` & `content`
+        # ✅ Validate `history`
         validated_history = []
         for msg in chat_request.history:
             if isinstance(msg, dict) and "role" in msg and "content" in msg:
@@ -372,14 +377,13 @@ async def chat(chat_request: ChatRequest):
                 logger.error(f"Invalid chat history entry: {msg}")
                 raise HTTPException(status_code=400, detail="Invalid chat history format.")
 
-        # ✅ Fix `risk_probability`: Convert from `"69.23%"` to `69.23`
+        # ✅ Convert `risk_probability` to a float and back to a string
         try:
-            risk_probability = float(chat_request.risk_probability.strip().replace("%", ""))
+            risk_probability = str(float(chat_request.risk_probability.strip().replace("%", "")))
         except ValueError:
             logger.error(f"Invalid risk probability: {chat_request.risk_probability}")
             raise HTTPException(status_code=400, detail=f"Invalid risk probability: {chat_request.risk_probability}")
-
-        # ✅ Format history, patient data, and recommendations for LLM
+       # ✅ Format history, patient data, and recommendations for LLM
         formatted_history = "\n".join(
             [f"**{msg['role'].capitalize()}**: {msg['content']}" for msg in validated_history]
         )
@@ -393,21 +397,22 @@ async def chat(chat_request: ChatRequest):
             patient_data=formatted_patient_data,
             recommendations=formatted_recommendations,
             predicted_risk=chat_request.predicted_risk,
-            risk_probability=str(risk_probability)  # ✅ Ensure it's passed as a string, but cleaned
+            risk_probability=risk_probability  # ✅ Ensuring it's a valid number as a string
         )
 
         # ✅ Append assistant's response to chat history
         chat_request.history.append({"role": "assistant", "content": response})
-
+          
         return {
             "response": response,
             "updated_history": chat_request.history
         }
-
+      
+    except HTTPException as http_error:
+        raise http_error
     except Exception as e:
         logger.error(f"Error processing chat request: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-        
         
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))  # Ensure compatibility with Render
