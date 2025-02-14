@@ -63,6 +63,10 @@ except Exception as e:
     logger.error("Error loading models: %s", str(e))
     raise Exception("Error loading LightGBM or Random Forest models.") from e
 
+
+llm = ChatOpenAI(temperature=0.7, openai_api_key=openai_api_key) 
+chat_chain = LLMChain(llm=llm, prompt=chat_prompt)
+
 # Chat Agent Prompt with Risk & Probability
 chat_prompt = PromptTemplate(
     input_variables=['history', 'user_input', 'patient_data', 'recommendations', 'predicted_risk', 'risk_probability'],
@@ -81,7 +85,6 @@ chat_prompt = PromptTemplate(
     )
 )
 
-chat_chain = LLMChain(llm=llm, prompt=chat_prompt)
 
 # Define a prediction function with model selection logic
 def predict_diabetes_risk(patient_data: dict):
