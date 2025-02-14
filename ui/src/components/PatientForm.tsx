@@ -15,7 +15,7 @@ export default function PatientForm({ formData, setFormData }) {
   };
 
   return (
-    <Grid container spacing={3}>
+    <Grid container spacing={3} sx={{ maxWidth: "600px" }}>
       <FormGrid size={{ xs: 12 }}>
         <FormLabel htmlFor="patient-name">Patient name</FormLabel>
         <OutlinedInput
