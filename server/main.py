@@ -350,7 +350,7 @@ async def get_recommendations(patient: PatientData):
 @app.post("/chat")
 async def chat(chat_request: ChatRequest):
     try:
-        # ✅ Clean `patient_data`: Convert empty strings to `0.0` & sanitize inputs
+        # ✅ Clean `patient_data`: Convert empty strings to `0.0` and remove invalid characters
         cleaned_patient_data = {}
         for key, value in chat_request.patient_data.items():
             try:
@@ -361,14 +361,28 @@ async def chat(chat_request: ChatRequest):
                 raise HTTPException(status_code=400, detail=f"Invalid input for {key}: {value}")
 
         # ✅ Ensure `recommendations` are valid strings
-        cleaned_recommendations = {k: v if isinstance(v, str) else "" for k, v in chat_request.recommendations.items()}
+        cleaned_recommendations = {k: str(v) if isinstance(v, str) else "" for k, v in chat_request.recommendations.items()}
 
-        # ✅ Format history properly
+        # ✅ Validate `history`: Ensure every message contains `role` & `content`
+        validated_history = []
+        for msg in chat_request.history:
+            if isinstance(msg, dict) and "role" in msg and "content" in msg:
+                validated_history.append(msg)
+            else:
+                logger.error(f"Invalid chat history entry: {msg}")
+                raise HTTPException(status_code=400, detail="Invalid chat history format.")
+
+        # ✅ Fix `risk_probability`: Convert from `"69.23%"` to `69.23`
+        try:
+            risk_probability = float(chat_request.risk_probability.strip().replace("%", ""))
+        except ValueError:
+            logger.error(f"Invalid risk probability: {chat_request.risk_probability}")
+            raise HTTPException(status_code=400, detail=f"Invalid risk probability: {chat_request.risk_probability}")
+
+        # ✅ Format history, patient data, and recommendations for LLM
         formatted_history = "\n".join(
-            [f"**{msg['role'].capitalize()}**: {msg['content']}" for msg in chat_request.history]
+            [f"**{msg['role'].capitalize()}**: {msg['content']}" for msg in validated_history]
         )
-
-        # ✅ Format patient data and recommendations
         formatted_patient_data = "\n".join([f"- {key}: {value}" for key, value in cleaned_patient_data.items()])
         formatted_recommendations = "\n".join([f"- {key}: {value}" for key, value in cleaned_recommendations.items()])
 
@@ -379,7 +393,7 @@ async def chat(chat_request: ChatRequest):
             patient_data=formatted_patient_data,
             recommendations=formatted_recommendations,
             predicted_risk=chat_request.predicted_risk,
-            risk_probability=chat_request.risk_probability
+            risk_probability=str(risk_probability)  # ✅ Ensure it's passed as a string, but cleaned
         )
 
         # ✅ Append assistant's response to chat history
