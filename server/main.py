@@ -70,7 +70,7 @@ except Exception as e:
 
 
 llm = ChatOpenAI(temperature=0.7, openai_api_key=openai_api_key) 
-chat_chain = LLMChain(llm=llm, prompt=chat_prompt)
+
 
 # Chat Agent Prompt with Risk & Probability
 chat_prompt = PromptTemplate(
@@ -89,7 +89,7 @@ chat_prompt = PromptTemplate(
         "Provide an informative response considering the patient's data, medical risk, and expert recommendations."
     )
 )
-
+chat_chain = LLMChain(llm=llm, prompt=chat_prompt)
 
 # Define a prediction function with model selection logic
 def predict_diabetes_risk(patient_data: dict):
