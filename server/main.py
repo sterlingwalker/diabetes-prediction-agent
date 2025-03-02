@@ -142,35 +142,30 @@ def predict_diabetes_risk(patient_data: dict):
         # Make predictions
         risk = selected_model.predict(patient_df)[0]
         risk_probability = selected_model.predict_proba(patient_df)[:, 1][0] * 100
-        
 
         # Compute SHAP Values
-        shap_values, base_value = compute_shap_values(selected_model, patient_df)
-
-        # Convert SHAP outputs to JSON-compatible format
-        shap_base_value = float(shapBaseValue[1]) if isinstance(shapBaseValue, np.ndarray) else shapBaseValue
-        shap_values_list = [float(value) for value in shapValues[0]]  # Convert nested SHAP array to list
+        shap_values, shap_base_value = compute_shap_values(selected_model, patient_df)
 
         return {
             "predictedRisk": "Diabetes" if risk == 1 else "No Diabetes",
             "riskProbability": f"{risk_probability:.2f}%",
             "modelUsed": model_used,
-            "shapValues": shap_base_value,  # Include SHAP values in the response
-            "shapBaseValue": shap_base_value
+            "shapValues": shap_values,  # SHAP values list
+            "shapBaseValue": shap_base_value  # Correctly assigned SHAP base value
         }
     except Exception as e:
         logger.error("Prediction error: %s", str(e))
         raise
 
+from fastapi.encoders import jsonable_encoder
 
 @app.post("/predict")
 async def predict(patient: PatientData):
     try:
-        # ✅ Convert input values to float safely, handling invalid values
+        # ✅ Convert input values to float safely
         patient_data = {}
-        for key, value in patient.model_dump().items():  # ✅ Updated from `dict()`
+        for key, value in patient.model_dump().items():
             try:
-                # ✅ Strip whitespace, remove invalid characters, and convert to float
                 cleaned_value = str(value).strip().replace("`", "").replace("'", "")
                 patient_data[key] = float(cleaned_value) if cleaned_value else 0.0
             except ValueError:
@@ -181,11 +176,13 @@ async def predict(patient: PatientData):
 
         result = predict_diabetes_risk(patient_data)
         logger.info(f"Prediction result: {result}")
-        return result
 
+        return jsonable_encoder(result)  # Ensure JSON-serializable output
     except Exception as e:
         logger.error(f"Error processing request: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
 
 def compute_shap_values(model, patient_df):
     try:
@@ -201,13 +198,15 @@ def compute_shap_values(model, patient_df):
         # Check if SHAP values are returned as a list (multi-class case)
         if isinstance(shap_values, list) and len(shap_values) == 2:
             shap_value_for_class_1 = shap_values[1]  # Class 1 (Diabetes)
+            shap_base_value = float(explainer.expected_value[1])
         else:
             shap_value_for_class_1 = shap_values
+            shap_base_value = float(explainer.expected_value)
 
         # Ensure correct indexing for single prediction
         shap_value_for_class_1 = shap_value_for_class_1[0].tolist()
 
-        return shap_value_for_class_1, explainer.expected_value
+        return shap_value_for_class_1, shap_base_value
     except Exception as e:
         logger.error(f"Error computing SHAP values: {str(e)}")
         return [], None
