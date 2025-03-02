@@ -15,6 +15,9 @@ from langchain.prompts import PromptTemplate
 import uvicorn
 from typing import Union, List, Dict
 from sklearn.impute import SimpleImputer
+import shap
+import matplotlib.pyplot as plt
+from imblearn.pipeline import Pipeline
 
 
 # Load environment variables
@@ -94,7 +97,7 @@ chat_prompt = PromptTemplate(
 )
 chat_chain = LLMChain(llm=llm, prompt=chat_prompt)
 
-# Define a prediction function with model selection logic
+
 def predict_diabetes_risk(patient_data: dict):
     try:
         lgbm_features = ['Glucose', 'BMI', 'Age']
@@ -140,14 +143,20 @@ def predict_diabetes_risk(patient_data: dict):
         risk = selected_model.predict(patient_df)[0]
         risk_probability = selected_model.predict_proba(patient_df)[:, 1][0] * 100
 
+        # Compute SHAP Values
+        shap_values, base_value = compute_shap_values(selected_model, patient_df)
+
         return {
             "predictedRisk": "Diabetes" if risk == 1 else "No Diabetes",
             "riskProbability": f"{risk_probability:.2f}%",
-            "modelUsed": model_used
+            "modelUsed": model_used,
+            "shapValues": shap_values,  # Include SHAP values in the response
+            "shapBaseValue": base_value
         }
     except Exception as e:
         logger.error("Prediction error: %s", str(e))
         raise
+
 
 @app.post("/predict")
 async def predict(patient: PatientData):
@@ -173,7 +182,30 @@ async def predict(patient: PatientData):
         logger.error(f"Error processing request: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+def compute_shap_values(model, patient_df):
+    try:
+        # Extract model from pipeline if needed
+        if isinstance(model, Pipeline):
+            logger.info("Extracting classifier from pipeline for SHAP analysis...")
+            model = model.named_steps['clf']
 
+        # TreeExplainer for Tree-Based Models
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(patient_df)
+
+        # Check if SHAP values are returned as a list (multi-class case)
+        if isinstance(shap_values, list) and len(shap_values) == 2:
+            shap_value_for_class_1 = shap_values[1]  # Class 1 (Diabetes)
+        else:
+            shap_value_for_class_1 = shap_values
+
+        # Ensure correct indexing for single prediction
+        shap_value_for_class_1 = shap_value_for_class_1[0].tolist()
+
+        return shap_value_for_class_1, explainer.expected_value
+    except Exception as e:
+        logger.error(f"Error computing SHAP values: {str(e)}")
+        return [], None
 
 # Middleware to log requests and prevent response stream errors
 @app.middleware("http")
