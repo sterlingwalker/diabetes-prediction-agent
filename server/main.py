@@ -191,26 +191,25 @@ def compute_shap_values(model, patient_df):
             logger.info("Extracting classifier from pipeline for SHAP analysis...")
             model = model.named_steps['clf']
 
-        # TreeExplainer for Tree-Based Models
+        # TreeExplainer for SHAP computation
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(patient_df)
 
-        # Check if SHAP values are returned as a list (multi-class case)
-        if isinstance(shap_values, list) and len(shap_values) == 2:
-            shap_value_for_class_1 = shap_values[1]  # Class 1 (Diabetes)
-            shap_base_value = float(explainer.expected_value[1])
+        # Ensure correct extraction for binary classification models
+        if isinstance(shap_values, list) and len(shap_values) == 2:  
+            # SHAP returns two arrays (for class 0 and class 1)
+            shap_value_for_class_1 = shap_values[1][0].tolist()  # Extract class 1 (Diabetes)
+            shap_base_value = float(explainer.expected_value[1])  # Base value for class 1
         else:
-            shap_value_for_class_1 = shap_values
+            # If SHAP returns only one array (e.g., for LightGBM)
+            shap_value_for_class_1 = shap_values[0].tolist()
             shap_base_value = float(explainer.expected_value)
-
-        # Ensure correct indexing for single prediction
-        shap_value_for_class_1 = shap_value_for_class_1[0].tolist()
 
         return shap_value_for_class_1, shap_base_value
     except Exception as e:
         logger.error(f"Error computing SHAP values: {str(e)}")
-        return [], None
-
+        return [], None  # Return empty list to prevent breaking the pipeline
+        
 # Middleware to log requests and prevent response stream errors
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
