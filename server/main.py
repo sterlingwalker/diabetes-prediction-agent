@@ -101,9 +101,9 @@ chat_chain = LLMChain(llm=llm, prompt=chat_prompt)
 def predict_diabetes_risk(patient_data: dict):
     try:
         lgbm_features = ['Glucose', 'BMI', 'Age']
-        rf_features = ['Glucose', 'BMI', 'Age', 'Pregnancies', 'DiabetesPedigreeFunction', 'BloodPressure', 'Insulin']
+        rf_features = ['Glucose', 'BMI', 'Age', 'Pregnancies', 'DiabetesPedigreeFunction', 'BloodPressure']
         critical_features = ['Glucose', 'BMI', 'Age']
-        features_to_check = ['BloodPressure', 'Insulin', 'Pregnancies', 'DiabetesPedigreeFunction', 'BMI', 'Glucose']
+        features_to_check = ['BloodPressure', 'Age', 'Pregnancies', 'DiabetesPedigreeFunction', 'BMI', 'Glucose']
 
         # Convert data to DataFrame and handle missing values
         patient_df = pd.DataFrame([patient_data])
