@@ -183,7 +183,6 @@ async def predict(patient: PatientData):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
 def compute_shap_values(model, patient_df):
     try:
         # Extract model from pipeline if needed
@@ -195,31 +194,42 @@ def compute_shap_values(model, patient_df):
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(patient_df)
 
+        # 🔍 Debugging: Log SHAP structure
+        logger.info(f"Raw SHAP values type: {type(shap_values)}")
+        logger.info(f"SHAP values shape (before processing): {np.array(shap_values).shape}")
+        logger.info(f"SHAP expected value type: {type(explainer.expected_value)}")
+
         # ✅ Handle Different SHAP Output Formats
         if isinstance(shap_values, list) and len(shap_values) == 2:  
-            shap_value_for_class_1 = shap_values[1]  # Extract SHAP values for **Class 1 (Diabetes)**
-            shap_base_value = explainer.expected_value[1]  # Extract base value for **Class 1**
+            logger.info("Detected binary classification model with two SHAP value outputs.")
+            shap_value_for_class_1 = shap_values[1]  # Extract **SHAP values for Class 1 (Diabetes)**
+            shap_base_value = explainer.expected_value[1]  # Extract **base value for Class 1**
         else:
-            shap_value_for_class_1 = shap_values  # For models returning a **single array**
+            logger.info("Detected model returning a single SHAP value array.")
+            shap_value_for_class_1 = shap_values
             shap_base_value = explainer.expected_value
 
         # ✅ Handle Multi-Output SHAP (Fixes "only length-1 arrays can be converted" Error)
         if isinstance(shap_value_for_class_1, np.ndarray) and len(shap_value_for_class_1.shape) > 2:
-            logger.info("Multi-output detected! Selecting first instance for visualization.")
+            logger.info("Multi-output detected! Reshaping SHAP values.")
             shap_value_for_class_1 = shap_value_for_class_1[:, :, 1]  # Select Class 1 dimension
+
+        # 🔍 Debugging: Log processed SHAP values
+        logger.info(f"Processed SHAP values shape: {shap_value_for_class_1.shape}")
+        logger.info(f"SHAP Base Value (before conversion): {shap_base_value}")
 
         # ✅ Ensure SHAP Values are JSON-Compatible
         shap_values_list = shap_value_for_class_1[0].tolist()  # Convert array to list
         shap_base_value = float(shap_base_value)  # Convert base value to float
 
-        logger.info(f"SHAP Values Extracted: {shap_values_list}")
-        logger.info(f"SHAP Base Value: {shap_base_value}")
+        logger.info(f"Final SHAP Values Extracted: {shap_values_list}")
+        logger.info(f"Final SHAP Base Value: {shap_base_value}")
 
         return shap_values_list, shap_base_value
     except Exception as e:
-        logger.error(f"Error computing SHAP values: {str(e)}")
+        logger.error(f"❌ Error computing SHAP values: {str(e)}")
         return [], None  # Prevents pipeline failure
-        
+
 
 
 # Middleware to log requests and prevent response stream errors
