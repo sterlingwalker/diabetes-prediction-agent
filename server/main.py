@@ -142,16 +142,21 @@ def predict_diabetes_risk(patient_data: dict):
         # Make predictions
         risk = selected_model.predict(patient_df)[0]
         risk_probability = selected_model.predict_proba(patient_df)[:, 1][0] * 100
+        
 
         # Compute SHAP Values
         shap_values, base_value = compute_shap_values(selected_model, patient_df)
+
+        # Convert SHAP outputs to JSON-compatible format
+        shap_base_value = float(shapBaseValue[1]) if isinstance(shapBaseValue, np.ndarray) else shapBaseValue
+        shap_values_list = [float(value) for value in shapValues[0]]  # Convert nested SHAP array to list
 
         return {
             "predictedRisk": "Diabetes" if risk == 1 else "No Diabetes",
             "riskProbability": f"{risk_probability:.2f}%",
             "modelUsed": model_used,
-            "shapValues": shap_values,  # Include SHAP values in the response
-            "shapBaseValue": base_value
+            "shapValues": shap_base_value,  # Include SHAP values in the response
+            "shapBaseValue": shap_base_value
         }
     except Exception as e:
         logger.error("Prediction error: %s", str(e))
