@@ -191,7 +191,7 @@ def compute_shap_values(model, patient_df):
             logger.info("Extracting classifier from pipeline for SHAP analysis...")
             model = model.named_steps['clf']
 
-        # TreeExplainer for SHAP computation
+        # TreeExplainer for Tree-Based Models
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(patient_df)
 
@@ -200,16 +200,19 @@ def compute_shap_values(model, patient_df):
             # SHAP returns two arrays (for class 0 and class 1)
             shap_value_for_class_1 = shap_values[1][0].tolist()  # Extract class 1 (Diabetes)
             shap_base_value = float(explainer.expected_value[1])  # Base value for class 1
-        else:
+        elif isinstance(shap_values, np.ndarray):
             # If SHAP returns only one array (e.g., for LightGBM)
             shap_value_for_class_1 = shap_values[0].tolist()
             shap_base_value = float(explainer.expected_value)
+        else:
+            raise ValueError("Unexpected SHAP output format")
 
         return shap_value_for_class_1, shap_base_value
     except Exception as e:
         logger.error(f"Error computing SHAP values: {str(e)}")
         return [], None  # Return empty list to prevent breaking the pipeline
-        
+
+
 # Middleware to log requests and prevent response stream errors
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
