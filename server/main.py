@@ -195,7 +195,7 @@ def compute_shap_values(model, patient_df):
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(patient_df)
 
-        # Ensure correct extraction for binary classification models
+        # Handle Random Forest differently
         if isinstance(shap_values, list) and len(shap_values) == 2:  
             # SHAP returns two arrays (for class 0 and class 1)
             shap_value_for_class_1 = shap_values[1][0].tolist()  # Extract class 1 (Diabetes)
@@ -207,10 +207,15 @@ def compute_shap_values(model, patient_df):
         else:
             raise ValueError("Unexpected SHAP output format")
 
+        # Debug Logging
+        logger.info(f"SHAP Values Extracted: {shap_value_for_class_1}")
+        logger.info(f"SHAP Base Value: {shap_base_value}")
+
         return shap_value_for_class_1, shap_base_value
     except Exception as e:
         logger.error(f"Error computing SHAP values: {str(e)}")
         return [], None  # Return empty list to prevent breaking the pipeline
+
 
 
 # Middleware to log requests and prevent response stream errors
