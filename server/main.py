@@ -219,18 +219,17 @@ def compute_shap_values(model, patient_df):
             logger.info(f"SHAP Base Value Array Detected: {shap_base_value}")
             shap_base_value = float(shap_base_value[1])  # Use **second index for Class 1**
 
+        # ✅ Convert SHAP values to dictionary mapping feature names
+        shap_values_dict = {feature: float(value) for feature, value in zip(patient_df.columns, shap_value_for_class_1[0])}
+
         # 🔍 Debugging: Log final values
-        logger.info(f"Processed SHAP values shape: {shap_value_for_class_1.shape}")
+        logger.info(f"Processed SHAP values mapping: {shap_values_dict}")
         logger.info(f"Final SHAP Base Value: {shap_base_value}")
 
-        # ✅ Ensure SHAP Values are JSON-Compatible
-        shap_values_list = shap_value_for_class_1[0].tolist()  # Convert array to list
-
-        return shap_values_list, shap_base_value
+        return shap_values_dict, shap_base_value
     except Exception as e:
         logger.error(f"❌ Error computing SHAP values: {str(e)}")
-        return [], None  # Prevents pipeline failure
-        
+        return {}, None  # Prevents pipeline failure        
 
 # Middleware to log requests and prevent response stream errors
 @app.middleware("http")
