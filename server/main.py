@@ -191,31 +191,35 @@ def compute_shap_values(model, patient_df):
             logger.info("Extracting classifier from pipeline for SHAP analysis...")
             model = model.named_steps['clf']
 
-        # TreeExplainer for Tree-Based Models
+        # Initialize SHAP Explainer
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(patient_df)
 
-        # Handle Random Forest differently
+        # ✅ Handle Different SHAP Output Formats
         if isinstance(shap_values, list) and len(shap_values) == 2:  
-            # SHAP returns two arrays (for class 0 and class 1)
-            shap_value_for_class_1 = shap_values[1][0].tolist()  # Extract class 1 (Diabetes)
-            shap_base_value = float(explainer.expected_value[1])  # Base value for class 1
-        elif isinstance(shap_values, np.ndarray):
-            # If SHAP returns only one array (e.g., for LightGBM)
-            shap_value_for_class_1 = shap_values[0].tolist()
-            shap_base_value = float(explainer.expected_value)
+            shap_value_for_class_1 = shap_values[1]  # Extract SHAP values for **Class 1 (Diabetes)**
+            shap_base_value = explainer.expected_value[1]  # Extract base value for **Class 1**
         else:
-            raise ValueError("Unexpected SHAP output format")
+            shap_value_for_class_1 = shap_values  # For models returning a **single array**
+            shap_base_value = explainer.expected_value
 
-        # Debug Logging
-        logger.info(f"SHAP Values Extracted: {shap_value_for_class_1}")
+        # ✅ Handle Multi-Output SHAP (Fixes "only length-1 arrays can be converted" Error)
+        if isinstance(shap_value_for_class_1, np.ndarray) and len(shap_value_for_class_1.shape) > 2:
+            logger.info("Multi-output detected! Selecting first instance for visualization.")
+            shap_value_for_class_1 = shap_value_for_class_1[:, :, 1]  # Select Class 1 dimension
+
+        # ✅ Ensure SHAP Values are JSON-Compatible
+        shap_values_list = shap_value_for_class_1[0].tolist()  # Convert array to list
+        shap_base_value = float(shap_base_value)  # Convert base value to float
+
+        logger.info(f"SHAP Values Extracted: {shap_values_list}")
         logger.info(f"SHAP Base Value: {shap_base_value}")
 
-        return shap_value_for_class_1, shap_base_value
+        return shap_values_list, shap_base_value
     except Exception as e:
         logger.error(f"Error computing SHAP values: {str(e)}")
-        return [], None  # Return empty list to prevent breaking the pipeline
-
+        return [], None  # Prevents pipeline failure
+        
 
 
 # Middleware to log requests and prevent response stream errors
