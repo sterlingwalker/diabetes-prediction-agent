@@ -79,19 +79,6 @@ export default function PatientForm({ formData, setFormData }) {
         />
       </FormGrid>
       <FormGrid size={{ xs: 12, md: 6 }}>
-        <FormLabel htmlFor="Insulin">Insulin</FormLabel>
-        <OutlinedInput
-          id="Insulin"
-          name="Insulin"
-          type="Insulin"
-          placeholder="80"
-          value={formData.Insulin}
-          required
-          size="small"
-          onChange={handleChange}
-        />
-      </FormGrid>
-      <FormGrid size={{ xs: 12, md: 6 }}>
         <FormLabel htmlFor="Pregnancies">Pregnancies</FormLabel>
         <OutlinedInput
           id="Pregnancies"
@@ -99,19 +86,6 @@ export default function PatientForm({ formData, setFormData }) {
           type="Pregnancies"
           placeholder="1"
           value={formData.Pregnancies}
-          required
-          size="small"
-          onChange={handleChange}
-        />
-      </FormGrid>
-      <FormGrid size={{ xs: 12, md: 6 }}>
-        <FormLabel htmlFor="SkinThickness">Skin Thickness</FormLabel>
-        <OutlinedInput
-          id="SkinThickness"
-          name="SkinThickness"
-          type="SkinThickness"
-          placeholder="0"
-          value={formData.SkinThickness}
           required
           size="small"
           onChange={handleChange}
