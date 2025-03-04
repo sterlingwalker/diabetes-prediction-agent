@@ -49,6 +49,12 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
   };
 
   const handleBack = () => {
+    if (activeStep === 1) {
+      setResult(null);
+      setRecommendation(null);
+      setError(null);
+    }
+
     setActiveStep(activeStep - 1);
   };
 

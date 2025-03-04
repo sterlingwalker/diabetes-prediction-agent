@@ -34,7 +34,7 @@ export default function CalculationProgress({
   error,
 }) {
   const isDiabetic = prediction?.predictedRisk === "Diabetes";
-  const riskProbability = prediction?.riskProbability.replace("%", "");
+  const riskProbability = prediction?.riskProbability.replace("%", "") || 0;
 
   const determineRiskColor = () => {
     if (riskProbability < 10) {
@@ -76,38 +76,44 @@ export default function CalculationProgress({
             <Typography variant="subtitle2">Loading Prediction...</Typography>
           </Box>
         ) : (
-          <Box sx={{ display: "flex", gap: "16px", margin: "0 0 0 8px" }}>
-            <Box sx={{ display: "flex" }}>
-              <CheckCircleIcon />
+          <>
+            <Box sx={{ display: "flex", gap: "16px", margin: "0 0 0 8px" }}>
+              <Box sx={{ display: "flex" }}>
+                <CheckCircleIcon />
+              </Box>
+              <Typography variant="subtitle2">Prediction Complete</Typography>
             </Box>
-            <Typography variant="subtitle2">Prediction Complete</Typography>
-          </Box>
+            <Box sx={{ display: "flex", width: "100%" }}>
+              {isDiabetic ? (
+                <Alert
+                  variant="outlined"
+                  severity="warning"
+                  sx={{ width: "100%" }}
+                >
+                  You are likely to be diabetic
+                </Alert>
+              ) : (
+                <Alert
+                  variant="outlined"
+                  severity="success"
+                  color="success"
+                  sx={{ width: "100%" }}
+                >
+                  Your probability of having diabetes is low
+                </Alert>
+              )}
+            </Box>
+            <Box sx={{ display: "flex" }}>
+              <Alert
+                variant="outlined"
+                severity={determineRiskColor()}
+                sx={{ width: "100%" }}
+              >
+                {`Probability of developing Diabetes: ${riskProbability}%`}
+              </Alert>
+            </Box>
+          </>
         )}
-        <Box sx={{ display: "flex", width: "100%" }}>
-          {isDiabetic ? (
-            <Alert variant="outlined" severity="warning" sx={{ width: "100%" }}>
-              You are likely to be diabetic
-            </Alert>
-          ) : (
-            <Alert
-              variant="outlined"
-              severity="success"
-              color="success"
-              sx={{ width: "100%" }}
-            >
-              Your probability of having diabetes is low
-            </Alert>
-          )}
-        </Box>
-        <Box sx={{ display: "flex" }}>
-          <Alert
-            variant="outlined"
-            severity={determineRiskColor()}
-            sx={{ width: "100%" }}
-          >
-            {`Probability of developing Diabetes: ${riskProbability}%`}
-          </Alert>
-        </Box>
         {recommendationLoading ? (
           <Box sx={{ display: "flex", gap: "16px", margin: "0 0 16px 8px" }}>
             <Box sx={{ display: "flex" }}>

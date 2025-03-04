@@ -8,23 +8,22 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import annotationPlugin from "chartjs-plugin-annotation";
 import { Bar } from "react-chartjs-2";
 
-// 1. Register Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  annotationPlugin,
 );
 
 const ShapBarChart = ({ shapResponse }) => {
-  const { shapValues, shapBaseValue } =
-    shapResponse;
+  const { shapValues, shapBaseValue, modelUsed } = shapResponse;
 
-  // 2. Prepare chart data & options
   const features = Object.keys(shapValues);
   const values = Object.values(shapValues);
 
@@ -35,10 +34,10 @@ const ShapBarChart = ({ shapResponse }) => {
         label: "SHAP Value",
         data: values,
         backgroundColor: values.map((val) =>
-          val >= 0 ? "rgba(75, 192, 192, 0.6)" : "rgba(255, 99, 132, 0.6)"
+          val >= 0 ? "rgba(75, 192, 192, 0.6)" : "rgba(255, 99, 132, 0.6)",
         ),
         borderColor: values.map((val) =>
-          val >= 0 ? "rgba(75, 192, 192, 1)" : "rgba(255, 99, 132, 1)"
+          val >= 0 ? "rgba(75, 192, 192, 1)" : "rgba(255, 99, 132, 1)",
         ),
         borderWidth: 1,
       },
@@ -62,6 +61,26 @@ const ShapBarChart = ({ shapResponse }) => {
           },
         },
       },
+      annotation: {
+        annotations: {
+          shapBaseLine: {
+            type: "line" as const,
+            yMin: shapBaseValue,
+            yMax: shapBaseValue,
+            borderColor: "red",
+            borderWidth: 2,
+            borderDash: [6, 6],
+            label: {
+              enabled: true,
+              content: `Base Value: ${shapBaseValue.toFixed(3)}`,
+              position: "start" as const,
+              xAdjust: 10,
+              backgroundColor: "rgba(0,0,0,0.7)",
+              color: "#fff",
+            },
+          },
+        },
+      },
     },
     scales: {
       x: {
@@ -79,9 +98,10 @@ const ShapBarChart = ({ shapResponse }) => {
     },
   };
 
-  // 3. Render the bar chart
   return (
     <div style={{ width: "100%", margin: "0 auto" }}>
+      <h3>Model Used: {modelUsed}</h3>
+      <p>SHAP Base Value: {shapBaseValue.toFixed(4)}</p>
       <Bar data={data} options={options} />
     </div>
   );

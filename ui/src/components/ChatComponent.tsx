@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import ReactMarkdown from "react-markdown";
 import styled from "styled-components";
 
 const ChatContainer = styled.div`
@@ -31,6 +32,9 @@ const MessageBubble = styled.div`
   align-self: ${(props) => (props.isUser ? "flex-end" : "flex-start")};
   background: ${(props) => (props.isUser ? "#0084ff" : "#e5e5ea")};
   color: ${(props) => (props.isUser ? "#fff" : "#000")};
+  p {
+    margin: 0;
+  }
 `;
 
 const InputContainer = styled.div`
@@ -128,7 +132,7 @@ function ChatComponent({
       <MessagesContainer>
         {history.map((msg, idx) => (
           <MessageBubble key={idx} isUser={msg.role === "user"}>
-            {msg.content}
+            <ReactMarkdown>{msg.content}</ReactMarkdown>
           </MessageBubble>
         ))}
         <div ref={messagesEndRef} />
