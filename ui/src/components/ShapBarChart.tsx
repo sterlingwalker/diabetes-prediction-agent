@@ -34,15 +34,13 @@ const ShapWaterfallChart = ({ shapResponse }) => {
   const sortedFeatures = sortedIndices.map((i) => features[i]);
   const sortedShapValues = sortedIndices.map((i) => shapImpacts[i]);
 
-  // Compute cumulative SHAP values for proper stacking
+  // Compute the cumulative SHAP values for proper stacking
   let cumulative = shapBaseValue;
-  const startPositions = [];
-  const endPositions = [];
+  const startPositions = [cumulative];
 
   sortedShapValues.forEach((val) => {
-    startPositions.push(cumulative);
     cumulative += val;
-    endPositions.push(cumulative);
+    startPositions.push(cumulative); // Store where each bar should start
   });
 
   // Prepare chart data
@@ -59,7 +57,7 @@ const ShapWaterfallChart = ({ shapResponse }) => {
           val >= 0 ? "rgba(54, 162, 235, 1)" : "rgba(255, 99, 132, 1)"
         ),
         borderWidth: 1,
-        base: startPositions, // ✅ Correct base stacking logic
+        base: startPositions.slice(0, -1), // ✅ Proper stacking: each bar starts from the previous cumulative value
       },
     ],
   };
