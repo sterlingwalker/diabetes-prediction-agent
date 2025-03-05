@@ -125,13 +125,26 @@ def predict_diabetes_risk(patient_data: dict):
         # Convert patient data to DataFrame
         patient_df = pd.DataFrame([patient_data])
 
-        #  Ensure all expected features exist in DataFrame before processing
+        # Ensure all expected features exist in DataFrame before processing
         patient_df = patient_df.reindex(columns=all_features, fill_value=np.nan)
+
+        # Count non-empty features BEFORE imputing missing values
+        num_available_features = patient_df.notna().sum(axis=1).iloc[0]
+
+        # Model Selection (before assigning defaults)
+        if num_available_features <= 4:
+            selected_model = lgbm_model
+            model_used = "LightGBM"
+            logger.info(f"Using LightGBM (≤4 Features Available) with {num_available_features} actual inputs")
+        else:
+            selected_model = tuned_rf_model
+            model_used = "Tuned Random Forest"
+            logger.info(f"Using Tuned Random Forest (≥5 Features Available) with {num_available_features} actual inputs")
 
         # Replace 0s in numerical features with NaN
         patient_df[numerical_features] = patient_df[numerical_features].replace(0, np.nan)
 
-        # Handle Completely Missing Features Before Imputation
+        # Handle Completely Missing Features AFTER Model Selection
         for feature in all_features:
             if patient_df[feature].isnull().all():
                 if feature in numerical_features:
@@ -149,19 +162,6 @@ def predict_diabetes_risk(patient_data: dict):
             patient_df[numerical_features] = num_imputer.fit_transform(patient_df[numerical_features])
         if patient_df[categorical_features].isnull().any().any():
             patient_df[categorical_features] = cat_imputer.fit_transform(patient_df[categorical_features])
-
-        # Count available features to determine model selection
-        num_available_features = patient_df.notnull().sum(axis=1).iloc[0]
-
-        # Model Selection
-        if num_available_features <= 4:
-            selected_model = lgbm_model
-            model_used = "LightGBM"
-            logger.info("Using LightGBM (≤4 Features Available)")
-        else:
-            selected_model = tuned_rf_model
-            model_used = "Tuned Random Forest"
-            logger.info("Using Tuned Random Forest (≥5 Features Available)")
 
         # Ensure feature order matches model training
         patient_df = patient_df[all_features]
@@ -191,7 +191,6 @@ def predict_diabetes_risk(patient_data: dict):
             "shapBaseValue": None,
             "error": str(e)
         }
-
 from fastapi.encoders import jsonable_encoder
 
 @app.post("/predict")
