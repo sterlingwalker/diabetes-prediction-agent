@@ -37,12 +37,12 @@ const ShapWaterfallChart = ({ shapResponse }) => {
   // **Step 2: Compute cumulative SHAP values for proper stacking**
   let cumulative = shapBaseValue;
   const startPositions = []; // "Support" bars to shift the real bars
-  const shapContributions = []; // Actual SHAP values that will be visible
+  const endPositions = [];   // The actual SHAP values that will be visible
 
   sortedShapValues.forEach((val) => {
     startPositions.push(cumulative); // Store where each SHAP bar should start
-    shapContributions.push(val); // Store SHAP impact
-    cumulative += val; // Update cumulative value for next bar
+    endPositions.push(val);         // Store SHAP impact
+    cumulative += val;              // Update cumulative value for next bar
   });
 
   // **Step 3: Prepare datasets (Support bars + Real bars)**
@@ -51,17 +51,17 @@ const ShapWaterfallChart = ({ shapResponse }) => {
     datasets: [
       {
         label: "Support Bars",
-        data: startPositions.map((pos) => pos - shapBaseValue), // Ensure stacking respects previous bar
+        data: startPositions, // Fake transparent bars to push stacking
         backgroundColor: "rgba(0, 0, 0, 0)", // Fully transparent
         borderWidth: 0,
       },
       {
         label: "SHAP Contribution",
-        data: shapContributions,
-        backgroundColor: shapContributions.map((val) =>
+        data: endPositions,
+        backgroundColor: endPositions.map((val) =>
           val >= 0 ? "rgba(255, 99, 132, 0.7)" : "rgba(75, 192, 75, 0.7)" // 🔴 Red for Positive, 🟢 Green for Negative
         ),
-        borderColor: shapContributions.map((val) =>
+        borderColor: endPositions.map((val) =>
           val >= 0 ? "rgba(255, 99, 132, 1)" : "rgba(75, 192, 75, 1)"
         ),
         borderWidth: 1,
