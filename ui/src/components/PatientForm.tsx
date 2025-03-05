@@ -11,7 +11,7 @@ const FormGrid = styled(Grid)(() => ({
   flexDirection: "column",
 }));
 
-const ethnicityOptions = [
+const EthnicityOptions = [
   { value: 1, label: "Mexican American" },
   { value: 2, label: "Other Hispanic" },
   { value: 3, label: "Non-Hispanic White" },
@@ -21,7 +21,7 @@ const ethnicityOptions = [
   { value: 8, label: "Indian" },
 ];
 
-const genderOptions = [
+const GenderOptions = [
   { value: 0, label: "Female" },
   { value: 1, label: "Male" },
 ];
@@ -98,15 +98,15 @@ export default function PatientForm({ formData, setFormData }) {
         />
       </FormGrid>
       <FormGrid size={{ xs: 12, md: 6 }}>
-        <FormLabel htmlFor="gender">Gender</FormLabel>
+        <FormLabel htmlFor="Gender">Gender</FormLabel>
         <Select
-          id="gender"
-          name="gender"
-          value={formData.gender}
+          id="Gender"
+          name="Gender"
+          value={formData.Gender}
           onChange={handleChange}
           size="small"
         >
-          {genderOptions.map((option) => (
+          {GenderOptions.map((option) => (
             <MenuItem key={option.value} value={option.value}>
               {option.label}
             </MenuItem>
@@ -114,15 +114,15 @@ export default function PatientForm({ formData, setFormData }) {
         </Select>
       </FormGrid>
       <FormGrid size={{ xs: 12, md: 6 }}>
-        <FormLabel htmlFor="ethnicity">Ethnicity</FormLabel>
+        <FormLabel htmlFor="Ethnicity">Ethnicity</FormLabel>
         <Select
-          id="ethnicity"
-          name="ethnicity"
-          value={formData.ethnicity}
+          id="Ethnicity"
+          name="Ethnicity"
+          value={formData.Ethnicity}
           onChange={handleChange}
           size="small"
         >
-          {ethnicityOptions.map((option) => (
+          {EthnicityOptions.map((option) => (
             <MenuItem key={option.value} value={option.value}>
               {option.label}
             </MenuItem>
