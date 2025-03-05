@@ -44,17 +44,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 class PatientData(BaseModel):
-    Glucose: float = 0.0
-    BMI: float = 0.0
-    Age: float = 0.0
-    Ethnicity: float = 0.0
-    BloodPressure: float = 0.0
-    Gender: float = 0.0
-    SkinThickness: float = 0.0
-    Insulin: float = 0.0
-    Pregnancies: float = 0.0
-    DiabetesPedigreeFunction: float = 0.0
+    Pregnancies: Union[float, str] = 0.0
+    Glucose: Union[float, str] = 0.0
+    BloodPressure: Union[float, str] = 0.0
+    SkinThickness: Union[float, str] = 0.0
+    Insulin: Union[float, str] = 0.0
+    BMI: Union[float, str] = 0.0
+    DiabetesPedigreeFunction: Union[float, str] = 0.0
+    Age: Union[float, str] = 0.0
+    Gender: Union[float, str] = 0.0
+    Ethnicity: Union[float, str] = 0.0
 
 
 # Define feature sets
@@ -206,15 +207,14 @@ from fastapi.encoders import jsonable_encoder
 @app.post("/predict")
 async def predict(patient: PatientData):
     try:
-        # ✅ Convert input values to float safely
         patient_data = {}
         for key, value in patient.model_dump().items():
             try:
                 cleaned_value = str(value).strip().replace("`", "").replace("'", "")
-                
-                # Handle empty string inputs by converting them to NaN (or default 0.0)
+
+                # ✅ Handle empty strings by setting them to NaN (Not 0.0)
                 if cleaned_value == "":
-                    patient_data[key] = np.nan  # Change to np.nan instead of 0.0
+                    patient_data[key] = np.nan  # Keeps missing values as NaN
                 else:
                     patient_data[key] = float(cleaned_value)
 
