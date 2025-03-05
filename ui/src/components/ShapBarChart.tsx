@@ -22,7 +22,7 @@ ChartJS.register(
 );
 
 const ShapWaterfallChart = ({ shapResponse }) => {
-  const { shapValues, shapBaseValue, modelUsed, featureValues } = shapResponse;
+  const { shapValues, shapBaseValue, modelUsed } = shapResponse;
 
   const features = Object.keys(shapValues);
   const rawValues = Object.values(shapValues);
@@ -31,7 +31,6 @@ const ShapWaterfallChart = ({ shapResponse }) => {
   const sortedIndices = rawValues.map((_, i) => i).sort((a, b) => Math.abs(rawValues[b]) - Math.abs(rawValues[a]));
   const sortedFeatures = sortedIndices.map((i) => features[i]);
   const sortedValues = sortedIndices.map((i) => rawValues[i]);
-  const sortedFeatureValues = sortedIndices.map((i) => featureValues[i]);
 
   // Compute cumulative SHAP values for waterfall effect
   let cumulative = shapBaseValue;
@@ -42,7 +41,7 @@ const ShapWaterfallChart = ({ shapResponse }) => {
   });
 
   const data = {
-    labels: sortedFeatures.map((f, i) => `${sortedFeatureValues[i]} = ${f}`), // Show feature value with name
+    labels: sortedFeatures, // Only feature names without values
     datasets: [
       {
         label: "SHAP Value",
