@@ -45,14 +45,32 @@ app.add_middleware(
 )
 
 class PatientData(BaseModel):
-    Pregnancies: Union[float, str] = 0.0
-    Glucose: Union[float, str] = 0.0
-    BloodPressure: Union[float, str] = 0.0
-    SkinThickness: Union[float, str] = 0.0
-    Insulin: Union[float, str] = 0.0
-    BMI: Union[float, str] = 0.0
-    DiabetesPedigreeFunction: Union[float, str] = 0.0
-    Age: Union[float, str] = 0.0
+    Glucose: float = 0.0
+    BMI: float = 0.0
+    Age: float = 0.0
+    Ethnicity: float = 0.0
+    BloodPressure: float = 0.0
+    Gender: float = 0.0
+
+
+# Define feature sets
+all_features = ['Glucose', 'BMI', 'Age', 'Ethnicity', 'BloodPressure', 'Gender']
+numerical_features = ['Glucose', 'BMI', 'Age', 'BloodPressure']
+categorical_features = ['Ethnicity', 'Gender']
+
+# Default Median Values (Replace with Dataset Medians)
+default_medians = {
+    'Glucose': 120,  
+    'BMI': 25,
+    'Age': 40,
+    'BloodPressure': 80
+}
+
+# Default Most Frequent Values for Categorical Features (Replace with Dataset Modes)
+default_modes = {
+    'Ethnicity': 1,  
+    'Gender': 0      
+}
 
 
 # Define Chat Request Model
@@ -100,61 +118,69 @@ chat_chain = LLMChain(llm=llm, prompt=chat_prompt)
 
 def predict_diabetes_risk(patient_data: dict):
     try:
-        lgbm_features = ['Glucose', 'BMI', 'Age']
-        rf_features = ['Glucose', 'BMI', 'Age', 'Pregnancies', 'DiabetesPedigreeFunction', 'BloodPressure']
-        critical_features = ['Glucose', 'BMI', 'Age']
-        features_to_check = ['BloodPressure', 'Age', 'Pregnancies', 'DiabetesPedigreeFunction', 'BMI', 'Glucose']
-
-        # Convert data to DataFrame and handle missing values
+        # Convert patient data to DataFrame
         patient_df = pd.DataFrame([patient_data])
-        patient_df[features_to_check] = patient_df[features_to_check].replace(0, np.nan)
 
-        # Select model based on missing values
-        if patient_df.isnull().any().any():
-            selected_model, selected_features = lgbm_model, lgbm_features
+        # Ensure all expected features exist in DataFrame
+        for feature in all_features:
+            if feature not in patient_df.columns:
+                patient_df[feature] = np.nan  
+
+        # Replace 0s in numerical features with NaN (except categorical features)
+        patient_df[numerical_features] = patient_df[numerical_features].replace(0, np.nan)
+
+        # Handle Completely Missing Features BEFORE Imputation
+        for feature in all_features:
+            if patient_df[feature].isnull().all():  
+                if feature in numerical_features:
+                    logger.info(f"Warning: {feature} is missing. Assigning default median: {default_medians[feature]}")
+                    patient_df[feature] = default_medians[feature]
+                elif feature in categorical_features:
+                    logger.info(f"Warning: {feature} is missing. Assigning default mode: {default_modes[feature]}")
+                    patient_df[feature] = default_modes[feature]
+
+        # Perform Median Imputation for Missing Numerical Features
+        num_imputer = SimpleImputer(strategy='median')
+        cat_imputer = SimpleImputer(strategy='most_frequent')
+
+        if patient_df[numerical_features].isnull().any().any():
+            patient_df[numerical_features] = num_imputer.fit_transform(patient_df[numerical_features])
+        if patient_df[categorical_features].isnull().any().any():
+            patient_df[categorical_features] = cat_imputer.fit_transform(patient_df[categorical_features])
+
+        # Count available features to determine model selection
+        num_available_features = patient_df.notnull().sum(axis=1).iloc[0]
+
+        # Model Selection
+        if num_available_features <= 4:
+            selected_model = lgbm_model
             model_used = "LightGBM"
-            logger.info("Using LightGBM (Missing Values Detected)")
+            logger.info("Using LightGBM (≤4 Features Available)")
         else:
-            selected_model, selected_features = tuned_rf_model, rf_features
+            selected_model = tuned_rf_model
             model_used = "Tuned Random Forest"
-            logger.info("Using Tuned Random Forest (Complete Data Detected)")
+            logger.info("Using Tuned Random Forest (≥5 Features Available)")
 
-        # Keep only selected features
-        patient_df = patient_df[selected_features]
+        # Ensure feature order matches model training
+        patient_df = patient_df[all_features]
 
-        # Handle missing values
-        if model_used == "LightGBM":
-            missing_critical = patient_df[critical_features].isnull().any()
-            if missing_critical.any():
-                logger.info("Imputing Missing Critical Features for LightGBM...")
-                for feature in critical_features:
-                    if patient_df[feature].isnull().all():
-                        default_values = {'Glucose': 120, 'BMI': 25, 'Age': 40}
-                        patient_df[feature] = default_values[feature]
-                    else:
-                        imputer = SimpleImputer(strategy='median')
-                        patient_df[[feature]] = imputer.fit_transform(patient_df[[feature]])
-        elif model_used == "Tuned Random Forest":
-            if patient_df.isnull().any().any():
-                imputer = SimpleImputer(strategy='median')
-                patient_df = pd.DataFrame(imputer.fit_transform(patient_df), columns=patient_df.columns)
-
-        # Make predictions
+        # Prediction
         risk = selected_model.predict(patient_df)[0]
         risk_probability = selected_model.predict_proba(patient_df)[:, 1][0] * 100
 
-        # Compute SHAP Values
+        # Compute SHAP Values (Leaves SHAP computation unchanged)
         shap_values, shap_base_value = compute_shap_values(selected_model, patient_df)
 
         return {
             "predictedRisk": "Diabetes" if risk == 1 else "No Diabetes",
             "riskProbability": f"{risk_probability:.2f}%",
             "modelUsed": model_used,
-            "shapValues": shap_values,  # SHAP values list
-            "shapBaseValue": shap_base_value  # Correctly assigned SHAP base value
+            "shapValues": shap_values,
+            "shapBaseValue": shap_base_value
         }
+
     except Exception as e:
-        logger.error("Prediction error: %s", str(e))
+        logger.error(f"Prediction error: {str(e)}")
         raise
 
 from fastapi.encoders import jsonable_encoder
