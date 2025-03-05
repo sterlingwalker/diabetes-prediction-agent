@@ -22,38 +22,45 @@ ChartJS.register(
 );
 
 const ShapWaterfallChart = ({ shapResponse }) => {
-  const { shapValues, shapBaseValue, modelUsed } = shapResponse;
+  const { shapValues, shapBaseValue, modelUsed, featureValues } = shapResponse;
 
   const features = Object.keys(shapValues);
   const rawValues = Object.values(shapValues);
 
+  // Sort by absolute SHAP impact for better readability
+  const sortedIndices = rawValues.map((_, i) => i).sort((a, b) => Math.abs(rawValues[b]) - Math.abs(rawValues[a]));
+  const sortedFeatures = sortedIndices.map((i) => features[i]);
+  const sortedValues = sortedIndices.map((i) => rawValues[i]);
+  const sortedFeatureValues = sortedIndices.map((i) => featureValues[i]);
+
   // Compute cumulative SHAP values for waterfall effect
   let cumulative = shapBaseValue;
-  const cumulativeValues = rawValues.map((val) => {
+  const cumulativeValues = sortedValues.map((val) => {
     const prev = cumulative;
     cumulative += val;
-    return prev; // Start position for each bar
+    return prev;
   });
 
   const data = {
-    labels: features,
+    labels: sortedFeatures.map((f, i) => `${sortedFeatureValues[i]} = ${f}`), // Show feature value with name
     datasets: [
       {
         label: "SHAP Value",
-        data: rawValues, // Actual SHAP impact per feature
-        backgroundColor: rawValues.map((val) =>
-          val >= 0 ? "rgba(75, 192, 192, 0.6)" : "rgba(255, 99, 132, 0.6)"
+        data: sortedValues,
+        backgroundColor: sortedValues.map((val) =>
+          val >= 0 ? "rgba(255, 99, 132, 0.7)" : "rgba(54, 162, 235, 0.7)" // Red for positive, Blue for negative
         ),
-        borderColor: rawValues.map((val) =>
-          val >= 0 ? "rgba(75, 192, 192, 1)" : "rgba(255, 99, 132, 1)"
+        borderColor: sortedValues.map((val) =>
+          val >= 0 ? "rgba(255, 99, 132, 1)" : "rgba(54, 162, 235, 1)"
         ),
         borderWidth: 1,
-        base: cumulativeValues, // Waterfall effect starts from cumulative base
+        base: cumulativeValues,
       },
     ],
   };
 
   const options = {
+    indexAxis: "y", // Horizontal bars
     responsive: true,
     plugins: {
       title: {
@@ -74,16 +81,15 @@ const ShapWaterfallChart = ({ shapResponse }) => {
         annotations: {
           shapBaseLine: {
             type: "line",
-            yMin: shapBaseValue,
-            yMax: shapBaseValue,
-            borderColor: "red",
+            xMin: shapBaseValue,
+            xMax: shapBaseValue,
+            borderColor: "black",
             borderWidth: 2,
             borderDash: [6, 6],
             label: {
               enabled: true,
               content: `Base Value: ${shapBaseValue.toFixed(3)}`,
-              position: "start",
-              xAdjust: 10,
+              position: "end",
               backgroundColor: "rgba(0,0,0,0.7)",
               color: "#fff",
             },
@@ -95,13 +101,12 @@ const ShapWaterfallChart = ({ shapResponse }) => {
       x: {
         title: {
           display: true,
-          text: "Features",
+          text: "SHAP Contribution",
         },
       },
       y: {
         title: {
-          display: true,
-          text: "SHAP Value (Cumulative)",
+          display: false, // Hide y-axis title since feature names are self-explanatory
         },
       },
     },
