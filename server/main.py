@@ -51,6 +51,10 @@ class PatientData(BaseModel):
     Ethnicity: float = 0.0
     BloodPressure: float = 0.0
     Gender: float = 0.0
+    SkinThickness: float = 0.0
+    Insulin: float = 0.0
+    Pregnancies: float = 0.0
+    DiabetesPedigreeFunction: float = 0.0
 
 
 # Define feature sets
