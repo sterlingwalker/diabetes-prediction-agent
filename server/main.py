@@ -122,41 +122,18 @@ chat_chain = LLMChain(llm=llm, prompt=chat_prompt)
 
 def predict_diabetes_risk(patient_data: dict):
     try:
-        # Ensure only expected features are processed
-        sanitized_data = {key: patient_data[key] for key in all_features if key in patient_data}
-
         # Convert patient data to DataFrame
-        patient_df = pd.DataFrame([sanitized_data])
+        patient_df = pd.DataFrame([patient_data])
 
-        # Add missing expected features as NaN
-        for feature in all_features:
-            if feature not in patient_df.columns:
-                patient_df[feature] = np.nan  
+        #  Ensure all expected features exist in DataFrame before processing
+        patient_df = patient_df.reindex(columns=all_features, fill_value=np.nan)
 
-        # Replace 0s in numerical features with NaN (except categorical)
+        # Replace 0s in numerical features with NaN
         patient_df[numerical_features] = patient_df[numerical_features].replace(0, np.nan)
 
-        # Count available features to determine model selection
-        num_available_features = patient_df.notnull().sum(axis=1).iloc[0]
-
-        # **Model Selection: LightGBM for ≤4 features, Random Forest for ≥5**
-        if num_available_features <= 4:
-            selected_model = lgbm_model
-            model_used = "LightGBM"
-            relevant_features = ['Glucose', 'BMI', 'Age', 'Ethnicity']
-            logger.info("Using LightGBM (≤4 Features Available)")
-        else:
-            selected_model = tuned_rf_model
-            model_used = "Tuned Random Forest"
-            relevant_features = all_features  # RF can handle all features
-            logger.info("Using Tuned Random Forest (≥5 Features Available)")
-
-        # **Filter only the features relevant to the selected model**
-        patient_df = patient_df[relevant_features]
-
-        # Handle missing features before imputation
-        for feature in relevant_features:
-            if patient_df[feature].isnull().all():  
+        # Handle Completely Missing Features Before Imputation
+        for feature in all_features:
+            if patient_df[feature].isnull().all():
                 if feature in numerical_features:
                     logger.info(f"Warning: {feature} is missing. Assigning default median: {default_medians[feature]}")
                     patient_df[feature] = default_medians[feature]
@@ -164,7 +141,7 @@ def predict_diabetes_risk(patient_data: dict):
                     logger.info(f"Warning: {feature} is missing. Assigning default mode: {default_modes[feature]}")
                     patient_df[feature] = default_modes[feature]
 
-        # **Perform Median Imputation for Missing Numerical Features**
+        # Perform Median Imputation for Missing Numerical Features
         num_imputer = SimpleImputer(strategy='median')
         cat_imputer = SimpleImputer(strategy='most_frequent')
 
@@ -173,14 +150,27 @@ def predict_diabetes_risk(patient_data: dict):
         if patient_df[categorical_features].isnull().any().any():
             patient_df[categorical_features] = cat_imputer.fit_transform(patient_df[categorical_features])
 
-        # Ensure feature order matches model training
-        patient_df = patient_df[relevant_features]
+        # Count available features to determine model selection
+        num_available_features = patient_df.notnull().sum(axis=1).iloc[0]
 
-        # **Prediction**
+        # Model Selection
+        if num_available_features <= 4:
+            selected_model = lgbm_model
+            model_used = "LightGBM"
+            logger.info("Using LightGBM (≤4 Features Available)")
+        else:
+            selected_model = tuned_rf_model
+            model_used = "Tuned Random Forest"
+            logger.info("Using Tuned Random Forest (≥5 Features Available)")
+
+        # Ensure feature order matches model training
+        patient_df = patient_df[all_features]
+
+        # Prediction
         risk = selected_model.predict(patient_df)[0]
         risk_probability = selected_model.predict_proba(patient_df)[:, 1][0] * 100
 
-        # Compute SHAP Values (Unchanged)
+        # Compute SHAP Values (Leaves SHAP computation unchanged)
         shap_values, shap_base_value = compute_shap_values(selected_model, patient_df)
 
         return {
@@ -212,7 +202,7 @@ async def predict(patient: PatientData):
             try:
                 cleaned_value = str(value).strip().replace("`", "").replace("'", "")
 
-                # ✅ Handle empty strings by setting them to NaN (Not 0.0)
+                # Handle empty strings by setting them to NaN (Not 0.0)
                 if cleaned_value == "":
                     patient_data[key] = np.nan  # Keeps missing values as NaN
                 else:
@@ -245,12 +235,12 @@ def compute_shap_values(model, patient_df):
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(patient_df)
 
-        # 🔍 Debugging Logs
+        #  Debugging Logs
         logger.info(f"Raw SHAP values type: {type(shap_values)}")
         logger.info(f"SHAP values shape (before processing): {np.array(shap_values).shape}")
         logger.info(f"SHAP expected value type: {type(explainer.expected_value)}")
 
-        # ✅ Handle Multi-Class Output (Fix for Random Forest)
+        # Handle Multi-Class Output (Fix for Random Forest)
         if isinstance(shap_values, list) and len(shap_values) == 2:  
             logger.info("Detected binary classification model with two SHAP value outputs.")
             shap_value_for_class_1 = shap_values[1]  # Extract SHAP values for Class 1 (Diabetes)
@@ -260,26 +250,26 @@ def compute_shap_values(model, patient_df):
             shap_value_for_class_1 = shap_values
             shap_base_value = explainer.expected_value
 
-        # ✅ Handle Multi-Output SHAP (Fix for RF)
+        #  Handle Multi-Output SHAP (Fix for RF)
         if isinstance(shap_value_for_class_1, np.ndarray) and len(shap_value_for_class_1.shape) > 2:
             logger.info("Multi-output detected! Selecting second class (diabetes).")
             shap_value_for_class_1 = shap_value_for_class_1[:, :, 1]  # Select **Class 1 contributions**
 
-        # ✅ Extract Correct SHAP Base Value
+        #  Extract Correct SHAP Base Value
         if isinstance(shap_base_value, np.ndarray):  
             logger.info(f"SHAP Base Value Array Detected: {shap_base_value}")
             shap_base_value = float(shap_base_value[1])  # Use **second index for Class 1**
 
-        # ✅ Convert SHAP values to dictionary mapping feature names
+        # Convert SHAP values to dictionary mapping feature names
         shap_values_dict = {feature: float(value) for feature, value in zip(patient_df.columns, shap_value_for_class_1[0])}
 
-        # 🔍 Debugging: Log final values
+        #  Debugging: Log final values
         logger.info(f"Processed SHAP values mapping: {shap_values_dict}")
         logger.info(f"Final SHAP Base Value: {shap_base_value}")
 
         return shap_values_dict, shap_base_value
     except Exception as e:
-        logger.error(f"❌ Error computing SHAP values: {str(e)}")
+        logger.error(f" Error computing SHAP values: {str(e)}")
         return {}, None  # Prevents pipeline failure        
 
 # Middleware to log requests and prevent response stream errors
