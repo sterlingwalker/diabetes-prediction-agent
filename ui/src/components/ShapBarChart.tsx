@@ -34,28 +34,29 @@ const ShapWaterfallChart = ({ shapResponse }) => {
   const sortedFeatures = sortedIndices.map((i) => features[i]);
   const sortedShapValues = sortedIndices.map((i) => shapImpacts[i]);
 
-  // Compute explicit cumulative SHAP values for proper stacking
+  // ✅ Compute explicit cumulative SHAP values for proper stacking
   let cumulative = shapBaseValue;
-  const basePositions = [shapBaseValue]; // First bar starts at `shapBaseValue`
+  const startPositions = [shapBaseValue]; // First bar starts at `shapBaseValue`
+
   sortedShapValues.forEach((val) => {
-    basePositions.push(cumulative);
     cumulative += val;
+    startPositions.push(cumulative); // Store where each bar should start
   });
 
-  // Create explicit start positions for stacking
+  // ✅ Create explicit start positions for stacking
   const stackedData = sortedShapValues.map((val, idx) => ({
     feature: sortedFeatures[idx],
     shapValue: val,
-    startPos: basePositions[idx], // Ensures each bar starts at correct cumulative position
+    startPos: startPositions[idx], // Ensures each bar starts at correct cumulative position
   }));
 
-  // Prepare chart data (Separate dataset for background stacking)
+  // ✅ Prepare chart data (Separate dataset for background stacking)
   const data = {
     labels: stackedData.map((d) => d.feature),
     datasets: [
       {
-        label: "Hidden Base",
-        data: stackedData.map((d) => d.startPos), // Pushes bars to correct stacking
+        label: "Support Bars",
+        data: stackedData.map((d) => d.startPos - shapBaseValue), // Pushes bars to correct stacking
         backgroundColor: "rgba(0, 0, 0, 0)", // Fully transparent
         borderWidth: 0,
       },
@@ -63,7 +64,7 @@ const ShapWaterfallChart = ({ shapResponse }) => {
         label: "SHAP Contribution",
         data: stackedData.map((d) => d.shapValue),
         backgroundColor: stackedData.map((d) =>
-          d.shapValue >= 0 ? "rgba(255, 99, 132, 0.7)" : "rgba(75, 192, 75, 0.7)" 
+          d.shapValue >= 0 ? "rgba(255, 99, 132, 0.7)" : "rgba(75, 192, 75, 0.7)" // 🔴 Red for Positive, 🟢 Green for Negative
         ),
         borderColor: stackedData.map((d) =>
           d.shapValue >= 0 ? "rgba(255, 99, 132, 1)" : "rgba(75, 192, 75, 1)"
@@ -73,7 +74,7 @@ const ShapWaterfallChart = ({ shapResponse }) => {
     ],
   };
 
-  // Chart options with true waterfall stacking
+  // ✅ Chart options with true waterfall stacking
   const options = {
     indexAxis: "y", // Horizontal bars
     responsive: true,
