@@ -27,26 +27,34 @@ const ShapWaterfallChart = ({ shapResponse }) => {
   const features = Object.keys(shapValues);
   const shapImpacts = Object.values(shapValues);
 
-  // Sort features by absolute SHAP impact (biggest first)
+  // Sort features by absolute SHAP impact (most significant first)
   const sortedIndices = shapImpacts
     .map((_, i) => i)
     .sort((a, b) => Math.abs(shapImpacts[b]) - Math.abs(shapImpacts[a]));
   const sortedFeatures = sortedIndices.map((i) => features[i]);
   const sortedShapValues = sortedIndices.map((i) => shapImpacts[i]);
 
-  // Compute the cumulative SHAP values for proper stacking
+  // Compute the cumulative SHAP values for correct stacking
   let cumulative = shapBaseValue;
-  const startPositions = [cumulative];
+  const startPositions = [];
+  const supportBars = [];
 
   sortedShapValues.forEach((val) => {
+    startPositions.push(cumulative); // This is the starting point for each contribution
+    supportBars.push(cumulative - shapBaseValue); // The "support" bar that helps stack bars correctly
     cumulative += val;
-    startPositions.push(cumulative); // Store where each bar should start
   });
 
-  // Prepare chart data
+  // Prepare chart data with separate support and actual bars
   const data = {
     labels: sortedFeatures,
     datasets: [
+      {
+        label: "Base Contribution",
+        data: supportBars, // Invisible bars that push each SHAP value into place
+        backgroundColor: "rgba(0, 0, 0, 0)", // Fully transparent
+        borderWidth: 0,
+      },
       {
         label: "SHAP Contribution",
         data: sortedShapValues,
@@ -57,7 +65,6 @@ const ShapWaterfallChart = ({ shapResponse }) => {
           val >= 0 ? "rgba(54, 162, 235, 1)" : "rgba(255, 99, 132, 1)"
         ),
         borderWidth: 1,
-        base: startPositions.slice(0, -1), // ✅ Proper stacking: each bar starts from the previous cumulative value
       },
     ],
   };
@@ -103,12 +110,14 @@ const ShapWaterfallChart = ({ shapResponse }) => {
     },
     scales: {
       x: {
+        stacked: true, // Ensures bars stack correctly
         title: {
           display: true,
           text: "SHAP Contribution",
         },
       },
       y: {
+        stacked: true, // Ensures proper waterfall effect
         title: {
           display: false, // Hide y-axis title since feature names are self-explanatory
         },
