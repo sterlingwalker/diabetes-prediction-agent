@@ -47,23 +47,27 @@ const ShapWaterfallChart = ({ shapResponse }) => {
 
   // **Step 3: Prepare datasets (Support bars + Real bars)**
   const data = {
-  labels: ["Feature A", "Feature B", "Feature C", "Feature D", "Feature E"],
-  datasets: [
-    {
-      label: "Support Bars",
-      data: [0.0, -0.2, -0.5, -0.6, -0.2], // Ensures stacking is correct
-      backgroundColor: "rgba(0, 0, 0, 0)", // Transparent support bars
-      borderWidth: 0,
-    },
-    {
-      label: "SHAP Contribution",
-      data: [-0.2, -0.3, -0.1, +0.4, -0.2], // True SHAP values
-      backgroundColor: ["green", "green", "green", "red", "green"], // Negative = Green, Positive = Red
-      borderColor: ["green", "green", "green", "red", "green"],
-      borderWidth: 1,
-    },
-  ],
-};
+    labels: sortedFeatures,
+    datasets: [
+      {
+        label: "Support Bars",
+        data: startPositions, // Fake transparent bars to push stacking
+        backgroundColor: "rgba(0, 0, 0, 0)", // Fully transparent
+        borderWidth: 0,
+      },
+      {
+        label: "SHAP Contribution",
+        data: endPositions,
+        backgroundColor: endPositions.map((val) =>
+          val >= 0 ? "rgba(255, 99, 132, 0.7)" : "rgba(75, 192, 75, 0.7)" // 🔴 Red for Positive, 🟢 Green for Negative
+        ),
+        borderColor: endPositions.map((val) =>
+          val >= 0 ? "rgba(255, 99, 132, 1)" : "rgba(75, 192, 75, 1)"
+        ),
+        borderWidth: 1,
+      },
+    ],
+  };
 
   // **Step 4: Configure Chart.js options**
   const options = {
