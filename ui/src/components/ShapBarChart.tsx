@@ -25,39 +25,43 @@ const ShapWaterfallChart = ({ shapResponse }) => {
   const { shapValues, shapBaseValue, modelUsed } = shapResponse;
 
   const features = Object.keys(shapValues);
-  const rawValues = Object.values(shapValues);
+  const shapImpacts = Object.values(shapValues);
 
-  // Sort by absolute SHAP impact for better readability
-  const sortedIndices = rawValues.map((_, i) => i).sort((a, b) => Math.abs(rawValues[b]) - Math.abs(rawValues[a]));
+  // Sort features by absolute SHAP impact (most significant first)
+  const sortedIndices = shapImpacts
+    .map((_, i) => i)
+    .sort((a, b) => Math.abs(shapImpacts[b]) - Math.abs(shapImpacts[a]));
   const sortedFeatures = sortedIndices.map((i) => features[i]);
-  const sortedValues = sortedIndices.map((i) => rawValues[i]);
+  const sortedShapValues = sortedIndices.map((i) => shapImpacts[i]);
 
-  // Compute cumulative SHAP values for waterfall effect
+  // Compute the cumulative SHAP values for proper waterfall stacking
   let cumulative = shapBaseValue;
-  const cumulativeValues = sortedValues.map((val) => {
-    const prev = cumulative;
+  const cumulativeStartPoints = sortedShapValues.map((val) => {
+    const prevCumulative = cumulative;
     cumulative += val;
-    return prev;
+    return prevCumulative;
   });
 
+  // Prepare chart data
   const data = {
-    labels: sortedFeatures, // Only feature names without values
+    labels: sortedFeatures,
     datasets: [
       {
-        label: "SHAP Value",
-        data: sortedValues,
-        backgroundColor: sortedValues.map((val) =>
-          val >= 0 ? "rgba(255, 99, 132, 0.7)" : "rgba(54, 162, 235, 0.7)" // Red for positive, Blue for negative
+        label: "SHAP Contribution",
+        data: sortedShapValues,
+        backgroundColor: sortedShapValues.map((val) =>
+          val >= 0 ? "rgba(54, 162, 235, 0.7)" : "rgba(255, 99, 132, 0.7)" // Blue for Positive, Red for Negative
         ),
-        borderColor: sortedValues.map((val) =>
-          val >= 0 ? "rgba(255, 99, 132, 1)" : "rgba(54, 162, 235, 1)"
+        borderColor: sortedShapValues.map((val) =>
+          val >= 0 ? "rgba(54, 162, 235, 1)" : "rgba(255, 99, 132, 1)"
         ),
         borderWidth: 1,
-        base: cumulativeValues,
+        base: cumulativeStartPoints, // Critical fix: Ensure each bar starts from the correct cumulative base
       },
     ],
   };
 
+  // Chart options with proper stacking
   const options = {
     indexAxis: "y", // Horizontal bars
     responsive: true,
@@ -78,7 +82,7 @@ const ShapWaterfallChart = ({ shapResponse }) => {
       },
       annotation: {
         annotations: {
-          shapBaseLine: {
+          baseLine: {
             type: "line",
             xMin: shapBaseValue,
             xMax: shapBaseValue,
