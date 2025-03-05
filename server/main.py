@@ -65,16 +65,16 @@ categorical_features = ['Ethnicity', 'Gender']
 
 # Default Median Values (Replace with Dataset Medians)
 default_medians = {
-    'Glucose': 120,  
-    'BMI': 25,
-    'Age': 40,
-    'BloodPressure': 80
+    'Glucose': 100,  
+    'BMI': 20,
+    'Age': 30,
+    'BloodPressure': 70
 }
 
 # Default Most Frequent Values for Categorical Features (Replace with Dataset Modes)
 default_modes = {
-    'Ethnicity': 1,  
-    'Gender': 0      
+    'Ethnicity': 3,  
+    'Gender': 1      
 }
 
 
