@@ -211,7 +211,13 @@ async def predict(patient: PatientData):
         for key, value in patient.model_dump().items():
             try:
                 cleaned_value = str(value).strip().replace("`", "").replace("'", "")
-                patient_data[key] = float(cleaned_value) if cleaned_value else 0.0
+                
+                # Handle empty string inputs by converting them to NaN (or default 0.0)
+                if cleaned_value == "":
+                    patient_data[key] = np.nan  # Change to np.nan instead of 0.0
+                else:
+                    patient_data[key] = float(cleaned_value)
+
             except ValueError:
                 logger.error(f"Invalid input for {key}: {value}")
                 raise HTTPException(status_code=400, detail=f"Invalid input for {key}: {value}")
@@ -222,6 +228,7 @@ async def predict(patient: PatientData):
         logger.info(f"Prediction result: {result}")
 
         return jsonable_encoder(result)  # Ensure JSON-serializable output
+
     except Exception as e:
         logger.error(f"Error processing request: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
