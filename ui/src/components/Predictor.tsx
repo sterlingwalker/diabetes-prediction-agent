@@ -20,8 +20,8 @@ import HealthAndSafetyIcon from "@mui/icons-material/HealthAndSafety";
 import AppTheme from "../theme/AppTheme.tsx";
 import axios from "axios";
 import ColorModeIconDropdown from "../theme/ColorModeIconDropdown.tsx";
-
 import ChatComponent from "./ChatComponent.tsx";
+
 const steps = ["Patient Details", "Calculate Diagnosis", "Review Results"];
 
 export default function Predictor(props: { disableCustomTheme?: boolean }) {
@@ -31,14 +31,14 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
   const [recommendation, setRecommendation] = useState<any>(null);
 
   const [formData, setFormData] = useState({
-    Pregnancies: "",
     Glucose: "",
     BloodPressure: "",
     SkinThickness: "",
     Insulin: "",
     BMI: "",
-    DiabetesPedigreeFunction: "",
     Age: "",
+    Gender: "",
+    Ethnicity: "",
   });
 
   const handleNext = () => {
@@ -54,7 +54,6 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
       setRecommendation(null);
       setError(null);
     }
-
     setActiveStep(activeStep - 1);
   };
 
@@ -62,7 +61,7 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
     try {
       const response = await axios.post(
         "https://diabetes-prediction-agent.onrender.com/predict",
-        formData,
+        formData
       );
       setResult(response.data);
       setError(null);
@@ -77,7 +76,7 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
     try {
       const response = await axios.post(
         "https://diabetes-prediction-agent.onrender.com/recommendations",
-        formData,
+        formData
       );
       setRecommendation(response.data);
       setError(null);
@@ -122,7 +121,6 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
       <Box sx={{ position: "fixed", top: "1rem", right: "1rem" }}>
         <ColorModeIconDropdown />
       </Box>
-
       <Grid
         container
         sx={{
@@ -235,67 +233,26 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
               gap: { xs: 5, md: "none" },
             }}
           >
-            <Stepper
-              id="mobile-stepper"
-              activeStep={activeStep}
-              alternativeLabel
-              sx={{ display: { sm: "flex", md: "none" } }}
-            >
-              {steps.map((label) => (
-                <Step
-                  key={label}
-                  sx={{
-                    ":first-child": { pl: 0 },
-                    ":last-child": { pr: 0 },
-                    "& .MuiStepConnector-root": { top: { xs: 6, sm: 12 } },
-                  }}
-                >
-                  <StepLabel
-                    sx={{
-                      ".MuiStepLabel-labelContainer": { maxWidth: "70px" },
-                    }}
-                  >
-                    {label}
-                  </StepLabel>
-                </Step>
-              ))}
-            </Stepper>
             <React.Fragment>
               {getStepContent(activeStep)}
               <Box
-                sx={[
-                  {
-                    display: "flex",
-                    flexDirection: { xs: "column-reverse", sm: "row" },
-                    alignItems: "end",
-                    flexGrow: 1,
-                    gap: 1,
-                    pb: { xs: 12, sm: 0 },
-                    mt: { xs: 2, sm: 0 },
-                    mb: "60px",
-                  },
-                  activeStep !== 0
-                    ? { justifyContent: "space-between" }
-                    : { justifyContent: "flex-end" },
-                ]}
+                sx={{
+                  display: "flex",
+                  flexDirection: { xs: "column-reverse", sm: "row" },
+                  alignItems: "end",
+                  flexGrow: 1,
+                  gap: 1,
+                  pb: { xs: 12, sm: 0 },
+                  mt: { xs: 2, sm: 0 },
+                  mb: "60px",
+                  justifyContent: activeStep !== 0 ? "space-between" : "flex-end",
+                }}
               >
                 {activeStep !== 0 && (
                   <Button
                     startIcon={<ChevronLeftRoundedIcon />}
                     onClick={handleBack}
                     variant="text"
-                    sx={{ display: { xs: "none", sm: "flex" } }}
-                  >
-                    Previous
-                  </Button>
-                )}
-                {activeStep !== 0 && (
-                  <Button
-                    startIcon={<ChevronLeftRoundedIcon />}
-                    onClick={handleBack}
-                    variant="outlined"
-                    fullWidth
-                    sx={{ display: { xs: "flex", sm: "none" } }}
                   >
                     Previous
                   </Button>
@@ -305,7 +262,6 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
                     variant="contained"
                     endIcon={<ChevronRightRoundedIcon />}
                     onClick={handleNext}
-                    sx={{ width: { xs: "100%", sm: "fit-content" } }}
                   >
                     {activeStep === steps.length - 1
                       ? "Continue Conversation"
