@@ -27,19 +27,22 @@ const ShapWaterfallChart = ({ shapResponse }) => {
   const features = Object.keys(shapValues);
   const shapImpacts = Object.values(shapValues);
 
-  // Sort features by absolute SHAP impact (most significant first)
+  // Sort features by absolute SHAP impact (biggest first)
   const sortedIndices = shapImpacts
     .map((_, i) => i)
     .sort((a, b) => Math.abs(shapImpacts[b]) - Math.abs(shapImpacts[a]));
   const sortedFeatures = sortedIndices.map((i) => features[i]);
   const sortedShapValues = sortedIndices.map((i) => shapImpacts[i]);
 
-  // Compute the cumulative SHAP values for proper waterfall stacking
+  // Compute cumulative SHAP values for proper stacking
   let cumulative = shapBaseValue;
-  const cumulativeStartPoints = sortedShapValues.map((val) => {
-    const prevCumulative = cumulative;
+  const startPositions = [];
+  const endPositions = [];
+
+  sortedShapValues.forEach((val) => {
+    startPositions.push(cumulative);
     cumulative += val;
-    return prevCumulative;
+    endPositions.push(cumulative);
   });
 
   // Prepare chart data
@@ -50,13 +53,13 @@ const ShapWaterfallChart = ({ shapResponse }) => {
         label: "SHAP Contribution",
         data: sortedShapValues,
         backgroundColor: sortedShapValues.map((val) =>
-          val >= 0 ? "rgba(54, 162, 235, 0.7)" : "rgba(255, 99, 132, 0.7)" // Blue for Positive, Red for Negative
+          val >= 0 ? "rgba(54, 162, 235, 0.7)" : "rgba(255, 99, 132, 0.7)" // 🔵 Blue for Positive, 🔴 Red for Negative
         ),
         borderColor: sortedShapValues.map((val) =>
           val >= 0 ? "rgba(54, 162, 235, 1)" : "rgba(255, 99, 132, 1)"
         ),
         borderWidth: 1,
-        base: cumulativeStartPoints, // Critical fix: Ensure each bar starts from the correct cumulative base
+        base: startPositions, // ✅ Correct base stacking logic
       },
     ],
   };
