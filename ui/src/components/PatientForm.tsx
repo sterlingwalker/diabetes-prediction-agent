@@ -3,11 +3,28 @@ import FormLabel from "@mui/material/FormLabel";
 import Grid from "@mui/material/Grid2";
 import OutlinedInput from "@mui/material/OutlinedInput";
 import { styled } from "@mui/material/styles";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
 
 const FormGrid = styled(Grid)(() => ({
   display: "flex",
   flexDirection: "column",
 }));
+
+const ethnicityOptions = [
+  { value: 1, label: "Mexican American" },
+  { value: 2, label: "Other Hispanic" },
+  { value: 3, label: "Non-Hispanic White" },
+  { value: 4, label: "Non-Hispanic Black" },
+  { value: 6, label: "Non-Hispanic Asian" },
+  { value: 7, label: "Other Race - Including Multi-Racial" },
+  { value: 8, label: "Indian" },
+];
+
+const genderOptions = [
+  { value: 0, label: "Female" },
+  { value: 1, label: "Male" },
+];
 
 export default function PatientForm({ formData, setFormData }) {
   const handleChange = (e) => {
@@ -21,9 +38,11 @@ export default function PatientForm({ formData, setFormData }) {
         <OutlinedInput
           id="patient-name"
           name="patient-name"
-          type="name"
+          type="text"
           placeholder="Sarah Smith"
           size="small"
+          value={formData["patient-name"]}
+          onChange={handleChange}
         />
       </FormGrid>
       <FormGrid size={{ xs: 12, md: 6 }}>
@@ -31,7 +50,7 @@ export default function PatientForm({ formData, setFormData }) {
         <OutlinedInput
           id="Glucose"
           name="Glucose"
-          type="Glucose"
+          type="number"
           placeholder="100"
           value={formData.Glucose}
           required
@@ -44,7 +63,7 @@ export default function PatientForm({ formData, setFormData }) {
         <OutlinedInput
           id="BMI"
           name="BMI"
-          type="BMI"
+          type="number"
           placeholder="30"
           value={formData.BMI}
           required
@@ -57,7 +76,7 @@ export default function PatientForm({ formData, setFormData }) {
         <OutlinedInput
           id="Age"
           name="Age"
-          type="Age"
+          type="number"
           placeholder="35"
           value={formData.Age}
           required
@@ -70,7 +89,7 @@ export default function PatientForm({ formData, setFormData }) {
         <OutlinedInput
           id="BloodPressure"
           name="BloodPressure"
-          type="BloodPressure"
+          type="number"
           placeholder="85"
           value={formData.BloodPressure}
           required
@@ -79,32 +98,36 @@ export default function PatientForm({ formData, setFormData }) {
         />
       </FormGrid>
       <FormGrid size={{ xs: 12, md: 6 }}>
-        <FormLabel htmlFor="Pregnancies">Pregnancies</FormLabel>
-        <OutlinedInput
-          id="Pregnancies"
-          name="Pregnancies"
-          type="Pregnancies"
-          placeholder="1"
-          value={formData.Pregnancies}
-          required
-          size="small"
+        <FormLabel htmlFor="gender">Gender</FormLabel>
+        <Select
+          id="gender"
+          name="gender"
+          value={formData.gender}
           onChange={handleChange}
-        />
+          size="small"
+        >
+          {genderOptions.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </Select>
       </FormGrid>
       <FormGrid size={{ xs: 12, md: 6 }}>
-        <FormLabel htmlFor="DiabetesPedigreeFunction">
-          Diabetes Pedigree Value
-        </FormLabel>
-        <OutlinedInput
-          id="DiabetesPedigreeFunction"
-          name="DiabetesPedigreeFunction"
-          type="DiabetesPedigreeFunction"
-          placeholder="0"
-          value={formData.DiabetesPedigreeFunction}
-          required
-          size="small"
+        <FormLabel htmlFor="ethnicity">Ethnicity</FormLabel>
+        <Select
+          id="ethnicity"
+          name="ethnicity"
+          value={formData.ethnicity}
           onChange={handleChange}
-        />
+          size="small"
+        >
+          {ethnicityOptions.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </Select>
       </FormGrid>
     </Grid>
   );
