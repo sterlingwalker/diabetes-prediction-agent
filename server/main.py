@@ -125,28 +125,26 @@ def predict_diabetes_risk(patient_data: dict):
         # Convert patient data to DataFrame
         patient_df = pd.DataFrame([patient_data])
 
-        # Ensure all expected features exist in DataFrame before processing
+        # Ensure all expected features exist in DataFrame
         patient_df = patient_df.reindex(columns=all_features, fill_value=np.nan)
 
-        # Count non-empty features BEFORE imputing missing values
-        num_available_features = patient_df.notna().sum(axis=1).iloc[0]
+        # **Count non-null user-provided values (Before Imputation)**
+        num_provided_features = patient_df.notna().sum(axis=1).iloc[0]
+        logger.info(f"User-provided features count: {num_provided_features}")
 
-        # Model Selection (before assigning defaults)
-        if num_available_features <= 4:
+        # **Model Selection (Based on User-Provided Data Only)**
+        if num_provided_features <= 4:
             selected_model = lgbm_model
             model_used = "LightGBM"
-            logger.info(f"Using LightGBM (≤4 Features Available) with {num_available_features} actual inputs")
+            logger.info("Using LightGBM (≤4 Provided Features)")
         else:
             selected_model = tuned_rf_model
             model_used = "Tuned Random Forest"
-            logger.info(f"Using Tuned Random Forest (≥5 Features Available) with {num_available_features} actual inputs")
+            logger.info("Using Tuned Random Forest (≥5 Provided Features)")
 
-        # Replace 0s in numerical features with NaN
-        patient_df[numerical_features] = patient_df[numerical_features].replace(0, np.nan)
-
-        # Handle Completely Missing Features AFTER Model Selection
+        # **Handle Missing Values (AFTER Model Selection)**
         for feature in all_features:
-            if patient_df[feature].isnull().all():
+            if patient_df[feature].isnull().all():  # If an entire column is missing
                 if feature in numerical_features:
                     logger.info(f"Warning: {feature} is missing. Assigning default median: {default_medians[feature]}")
                     patient_df[feature] = default_medians[feature]
@@ -154,7 +152,7 @@ def predict_diabetes_risk(patient_data: dict):
                     logger.info(f"Warning: {feature} is missing. Assigning default mode: {default_modes[feature]}")
                     patient_df[feature] = default_modes[feature]
 
-        # Perform Median Imputation for Missing Numerical Features
+        # **Perform Median Imputation for Missing Numerical Features**
         num_imputer = SimpleImputer(strategy='median')
         cat_imputer = SimpleImputer(strategy='most_frequent')
 
@@ -163,14 +161,14 @@ def predict_diabetes_risk(patient_data: dict):
         if patient_df[categorical_features].isnull().any().any():
             patient_df[categorical_features] = cat_imputer.fit_transform(patient_df[categorical_features])
 
-        # Ensure feature order matches model training
+        # **Ensure feature order matches model training**
         patient_df = patient_df[all_features]
 
-        # Prediction
+        # **Prediction**
         risk = selected_model.predict(patient_df)[0]
         risk_probability = selected_model.predict_proba(patient_df)[:, 1][0] * 100
 
-        # Compute SHAP Values (Leaves SHAP computation unchanged)
+        # **Compute SHAP Values (Leaves SHAP computation unchanged)**
         shap_values, shap_base_value = compute_shap_values(selected_model, patient_df)
 
         return {
@@ -191,6 +189,8 @@ def predict_diabetes_risk(patient_data: dict):
             "shapBaseValue": None,
             "error": str(e)
         }
+
+
 from fastapi.encoders import jsonable_encoder
 
 @app.post("/predict")
