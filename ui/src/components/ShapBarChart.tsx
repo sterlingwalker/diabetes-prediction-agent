@@ -18,28 +18,37 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  annotationPlugin,
+  annotationPlugin
 );
 
-const ShapBarChart = ({ shapResponse }) => {
+const ShapWaterfallChart = ({ shapResponse }) => {
   const { shapValues, shapBaseValue, modelUsed } = shapResponse;
 
   const features = Object.keys(shapValues);
-  const values = Object.values(shapValues);
+  const rawValues = Object.values(shapValues);
+
+  // Compute cumulative SHAP values for waterfall effect
+  let cumulative = shapBaseValue;
+  const cumulativeValues = rawValues.map((val) => {
+    const prev = cumulative;
+    cumulative += val;
+    return prev; // Start position for each bar
+  });
 
   const data = {
     labels: features,
     datasets: [
       {
         label: "SHAP Value",
-        data: values,
-        backgroundColor: values.map((val) =>
-          val >= 0 ? "rgba(75, 192, 192, 0.6)" : "rgba(255, 99, 132, 0.6)",
+        data: rawValues, // Actual SHAP impact per feature
+        backgroundColor: rawValues.map((val) =>
+          val >= 0 ? "rgba(75, 192, 192, 0.6)" : "rgba(255, 99, 132, 0.6)"
         ),
-        borderColor: values.map((val) =>
-          val >= 0 ? "rgba(75, 192, 192, 1)" : "rgba(255, 99, 132, 1)",
+        borderColor: rawValues.map((val) =>
+          val >= 0 ? "rgba(75, 192, 192, 1)" : "rgba(255, 99, 132, 1)"
         ),
         borderWidth: 1,
+        base: cumulativeValues, // Waterfall effect starts from cumulative base
       },
     ],
   };
@@ -49,7 +58,7 @@ const ShapBarChart = ({ shapResponse }) => {
     plugins: {
       title: {
         display: true,
-        text: "SHAP Values by Feature",
+        text: "SHAP Waterfall Chart",
       },
       legend: {
         display: false,
@@ -57,14 +66,14 @@ const ShapBarChart = ({ shapResponse }) => {
       tooltip: {
         callbacks: {
           label: function (context) {
-            return `SHAP Contribution: ${context.parsed.y.toFixed(4)}`;
+            return `SHAP Contribution: ${context.raw.toFixed(4)}`;
           },
         },
       },
       annotation: {
         annotations: {
           shapBaseLine: {
-            type: "line" as const,
+            type: "line",
             yMin: shapBaseValue,
             yMax: shapBaseValue,
             borderColor: "red",
@@ -73,7 +82,7 @@ const ShapBarChart = ({ shapResponse }) => {
             label: {
               enabled: true,
               content: `Base Value: ${shapBaseValue.toFixed(3)}`,
-              position: "start" as const,
+              position: "start",
               xAdjust: 10,
               backgroundColor: "rgba(0,0,0,0.7)",
               color: "#fff",
@@ -92,7 +101,7 @@ const ShapBarChart = ({ shapResponse }) => {
       y: {
         title: {
           display: true,
-          text: "SHAP Value",
+          text: "SHAP Value (Cumulative)",
         },
       },
     },
@@ -107,4 +116,4 @@ const ShapBarChart = ({ shapResponse }) => {
   );
 };
 
-export default ShapBarChart;
+export default ShapWaterfallChart;
