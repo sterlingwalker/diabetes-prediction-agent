@@ -124,7 +124,7 @@ chat_prompt = PromptTemplate(
 )
 chat_chain = LLMChain(llm=llm, prompt=chat_prompt)
 
-def predict_diabetes_risk(patient_data: dict):
+def predict_diabetes_risk(patient_data: dict, compute_shap: bool = True):
     try:
         # Convert patient data to DataFrame
         patient_df = pd.DataFrame([patient_data])
@@ -172,20 +172,31 @@ def predict_diabetes_risk(patient_data: dict):
         risk = selected_model.predict(patient_df)[0]
         risk_probability = selected_model.predict_proba(patient_df)[:, 1][0] * 100
 
-        # **Compute SHAP Values (Leaves SHAP computation unchanged)**
-        shap_values, shap_base_value = compute_shap_values(selected_model, patient_df)
-
-        # Generate SHAP plot image (base64 encoded)
-        shap_plot_base64 = compute_shap_plot(list(shap_values.values()), patient_df)
-
-        return {
+        result = {
             "predictedRisk": "Diabetes" if risk == 1 else "No Diabetes",
             "riskProbability": f"{risk_probability:.2f}%",
-            "modelUsed": model_used,
-            "shapValues": shap_values,
-            "shapBaseValue": shap_base_value,
-            "shapPlot": shap_plot_base64
+            "modelUsed": model_used
         }
+
+        # **Compute SHAP Values ONLY if requested (i.e., from /predict API)**
+        if compute_shap:
+            shap_values, shap_base_value = compute_shap_values(selected_model, patient_df)
+            shap_plot_base64 = compute_shap_plot(list(shap_values.values()), patient_df)
+
+            result.update({
+                "shapValues": shap_values,
+                "shapBaseValue": shap_base_value,
+                "shapPlot": shap_plot_base64
+            })
+        else:
+            # Do not include SHAP values in /recommendations response
+            result.update({
+                "shapValues": {},
+                "shapBaseValue": None,
+                "shapPlot": None
+            })
+
+        return result
 
     except Exception as e:
         logger.error(f"Prediction error: {str(e)}")
@@ -195,10 +206,10 @@ def predict_diabetes_risk(patient_data: dict):
             "modelUsed": "N/A",
             "shapValues": {},
             "shapBaseValue": None,
+            "shapPlot": None,
             "error": str(e)
         }
-
-
+        
 from fastapi.encoders import jsonable_encoder
 
 @app.post("/predict")
@@ -221,7 +232,8 @@ async def predict(patient: PatientData):
 
         logger.info(f"Received patient data with defaults: {patient_data}")
 
-        result = predict_diabetes_risk(patient_data)
+        # **SHAP Computation Enabled (Default)**
+        result = predict_diabetes_risk(patient_data, compute_shap=True)
         logger.info(f"Prediction result: {result}")
 
         return jsonable_encoder(result)  # Ensure JSON-serializable output
@@ -443,18 +455,28 @@ def get_final_recommendation(patient_data, expert_recommendations, risk_result):
 
     return final_recommendation
 
-# FastAPI Route for Recommendations
 @app.post("/recommendations")
 async def get_recommendations(patient: PatientData):
     try:
-        patient_data = {
-            key: float(value) if isinstance(value, (int, float)) or value.strip() else 0.0
-            for key, value in patient.dict().items()
-        }
+        patient_data = {}
+        for key, value in patient.model_dump().items():
+            try:
+                cleaned_value = str(value).strip().replace("`", "").replace("'", "")
+
+                # Handle empty strings by setting them to NaN (Not 0.0)
+                if cleaned_value == "":
+                    patient_data[key] = np.nan  # Keeps missing values as NaN
+                else:
+                    patient_data[key] = float(cleaned_value)
+
+            except ValueError:
+                logger.error(f"Invalid input for {key}: {value}")
+                raise HTTPException(status_code=400, detail=f"Invalid input for {key}: {value}")
+
         logger.info(f"Received patient data for recommendations: {patient_data}")
 
-        # Use existing prediction function to get risk result
-        risk_result = predict_diabetes_risk(patient_data)
+        # **SHAP Computation Disabled**
+        risk_result = predict_diabetes_risk(patient_data, compute_shap=False)
         logger.info(f"Risk Prediction: {risk_result}")
 
         # Generate expert recommendations
