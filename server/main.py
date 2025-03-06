@@ -293,24 +293,40 @@ def compute_shap_values(model, patient_df):
 
 
 def compute_shap_plot(shap_values, patient_df):
-     # Convert list of shap values to a NumPy array with shape (1, n_features)
-    shap_values_array = np.array(shap_values).reshape(1, -1)
-    
-    # Create a new figure
-    fig = plt.figure()
-    # Create a SHAP summary plot (bar type for clarity)
-    shap.summary_plot(shap_values_array, features=patient_df, plot_type="bar", show=False)
-    
-    # Save the plot to a bytes buffer
-    buf = io.BytesIO()
-    plt.savefig(buf, format="png", bbox_inches="tight")
-    plt.close(fig)  # Close the figure to free memory
-    buf.seek(0)
-    
-    # Encode the image as a base64 string
-    shap_plot_base64 = base64.b64encode(buf.read()).decode("utf-8")
-    return shap_plot_base64
+    """
+    Generates a SHAP Waterfall plot and returns it as a base64 string.
+    Ensures compatibility with LightGBM & Random Forest models.
+    """
+    try:
+        # **Convert list of shap values to NumPy array**
+        shap_values_array = np.array(shap_values).reshape(1, -1)
 
+        # **Initialize Figure**
+        fig, ax = plt.subplots(figsize=(8, 6))
+
+        # **Create SHAP Waterfall Plot**
+        shap.waterfall_plot(shap.Explanation(
+            values=shap_values_array[0],  # Use the first row
+            base_values=shap_values[0],   # Base value for individual prediction
+            data=patient_df.iloc[0],      # Feature values
+            feature_names=patient_df.columns
+        ))
+
+        # **Save the plot to a Bytes buffer**
+        buf = io.BytesIO()
+        plt.savefig(buf, format="png", bbox_inches="tight")
+        plt.close(fig)  # **Close the figure to free memory**
+        buf.seek(0)
+
+        # **Encode the image as a base64 string**
+        shap_plot_base64 = base64.b64encode(buf.read()).decode("utf-8")
+
+        return shap_plot_base64
+
+    except Exception as e:
+        logger.error(f"Error generating SHAP plot: {str(e)}")
+        return None  # Return None instead of breaking the pipeline
+        
 
 # Middleware to log requests and prevent response stream errors
 @app.middleware("http")
