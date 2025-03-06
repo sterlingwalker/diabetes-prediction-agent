@@ -399,7 +399,6 @@ def get_biomedical_evidence(patient_data):
 
 
 
-# Function to create context for LangChain agents
 def create_dynamic_context(patient_data, risk_result, guideline_evidence):
     return (
         f"**Patient Details:**\n"
@@ -419,6 +418,7 @@ def get_expert_recommendations(patient_data, risk_result):
         "Dietitian": get_guideline_evidence(patient_data, risk_result, "Dietitian"),
         "Exercise": get_guideline_evidence(patient_data, risk_result, "Exercise")
     }
+    
     context = create_dynamic_context(patient_data, risk_result, "\n".join(guideline_evidence.values()))
 
 
