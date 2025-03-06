@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -29,17 +29,20 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [recommendation, setRecommendation] = useState<any>(null);
+  const [showNextButton, setShowNextButton] = useState(false);
 
   const [formData, setFormData] = useState({
     Glucose: "",
     BloodPressure: "",
-    SkinThickness: "",
-    Insulin: "",
     BMI: "",
     Age: "",
     Gender: "",
     Ethnicity: "",
   });
+
+  useEffect(() => {
+    setShowNextButton(activeStep !== 3 && (activeStep > 0 || Object.values(formData).every(value => value !== '')));
+  }, [activeStep, formData]);
 
   const handleNext = () => {
     if (activeStep === 0) {
@@ -257,7 +260,7 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
                     Previous
                   </Button>
                 )}
-                {activeStep !== 3 && (
+                {showNextButton && (
                   <Button
                     variant="contained"
                     endIcon={<ChevronRightRoundedIcon />}
