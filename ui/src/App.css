@@ -36,3 +36,15 @@
     transform: rotate(360deg);
   }
 }
+
+.reviewContainer {
+  p {
+    margin: 0;
+  }
+  ul {
+    margin: 0;
+  }
+  ol {
+    margin: 0;
+  }
+}

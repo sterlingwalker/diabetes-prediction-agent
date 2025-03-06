@@ -2,10 +2,12 @@ import * as React from "react";
 import Grid from "@mui/material/Grid2";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import ReactMarkdown from "react-markdown";
+import "../App.css";
 
 export default function Review({ response }) {
   return (
-    <div>
+    <div className="reviewContainer">
       <Typography
         sx={{ fontWeight: 400, fontSize: "20px", marginBottom: "16px" }}
         variant="subtitle2"
@@ -30,7 +32,7 @@ export default function Review({ response }) {
               variant="body2"
               sx={{ textAlign: "left", whiteSpace: "pre-wrap" }}
             >
-              {response?.endocrinologistRecommendation}
+              <ReactMarkdown>{response?.endocrinologistRecommendation}</ReactMarkdown>
             </Typography>
           </Stack>
         </React.Fragment>
@@ -50,7 +52,7 @@ export default function Review({ response }) {
               variant="body2"
               sx={{ textAlign: "left", whiteSpace: "pre-wrap" }}
             >
-              {response?.dietitianRecommendation}
+              <ReactMarkdown>{response?.dietitianRecommendation}</ReactMarkdown>
             </Typography>
           </Stack>
         </React.Fragment>
@@ -70,7 +72,7 @@ export default function Review({ response }) {
               variant="body2"
               sx={{ textAlign: "left", whiteSpace: "pre-wrap" }}
             >
-              {response?.fitnessRecommendation}
+              <ReactMarkdown>{response?.fitnessRecommendation}</ReactMarkdown>
             </Typography>
           </Stack>
         </React.Fragment>
@@ -90,7 +92,7 @@ export default function Review({ response }) {
               variant="body2"
               sx={{ textAlign: "left", whiteSpace: "pre-wrap" }}
             >
-              {response?.finalRecommendation}
+              <ReactMarkdown>{response?.finalRecommendation}</ReactMarkdown>
             </Typography>
           </Stack>
         </React.Fragment>
