@@ -8,6 +8,8 @@ import joblib
 import logging
 import json
 import os
+import io
+import base64
 from dotenv import load_dotenv
 from langchain.chains import LLMChain
 from langchain_community.chat_models import ChatOpenAI
@@ -16,6 +18,8 @@ import uvicorn
 from typing import Union, List, Dict
 from sklearn.impute import SimpleImputer
 import shap
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from imblearn.pipeline import Pipeline
 
@@ -171,12 +175,16 @@ def predict_diabetes_risk(patient_data: dict):
         # **Compute SHAP Values (Leaves SHAP computation unchanged)**
         shap_values, shap_base_value = compute_shap_values(selected_model, patient_df)
 
+        # Generate SHAP plot image (base64 encoded)
+        shap_plot_base64 = compute_shap_plot(list(shap_values.values()), patient_df)
+
         return {
             "predictedRisk": "Diabetes" if risk == 1 else "No Diabetes",
             "riskProbability": f"{risk_probability:.2f}%",
             "modelUsed": model_used,
             "shapValues": shap_values,
-            "shapBaseValue": shap_base_value
+            "shapBaseValue": shap_base_value,
+            "shapPlot": shap_plot_base64
         }
 
     except Exception as e:
@@ -270,6 +278,27 @@ def compute_shap_values(model, patient_df):
     except Exception as e:
         logger.error(f" Error computing SHAP values: {str(e)}")
         return {}, None  # Prevents pipeline failure        
+
+
+def compute_shap_plot(shap_values, patient_df):
+     # Convert list of shap values to a NumPy array with shape (1, n_features)
+    shap_values_array = np.array(shap_values).reshape(1, -1)
+    
+    # Create a new figure
+    fig = plt.figure()
+    # Create a SHAP summary plot (bar type for clarity)
+    shap.summary_plot(shap_values_array, features=patient_df, plot_type="bar", show=False)
+    
+    # Save the plot to a bytes buffer
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png", bbox_inches="tight")
+    plt.close(fig)  # Close the figure to free memory
+    buf.seek(0)
+    
+    # Encode the image as a base64 string
+    shap_plot_base64 = base64.b64encode(buf.read()).decode("utf-8")
+    return shap_plot_base64
+
 
 # Middleware to log requests and prevent response stream errors
 @app.middleware("http")

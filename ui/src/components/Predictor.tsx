@@ -66,6 +66,10 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
         "https://diabetes-prediction-agent.onrender.com/predict",
         formData
       );
+      if (response.data.error) {
+        setError(response.data.error);
+        return;
+      }
       setResult(response.data);
       setError(null);
       getRecommendations();

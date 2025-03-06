@@ -22,7 +22,7 @@ ChartJS.register(
 );
 
 const ShapWaterfallChart = ({ shapResponse }) => {
-  const { shapValues, shapBaseValue, modelUsed } = shapResponse;
+  const { shapValues, shapBaseValue, modelUsed, shapPlot } = shapResponse;
 
   const features = Object.keys(shapValues);
   const shapImpacts = Object.values(shapValues);
@@ -130,6 +130,7 @@ const ShapWaterfallChart = ({ shapResponse }) => {
       <h3>Model Used: {modelUsed}</h3>
       <p>SHAP Base Value: {shapBaseValue.toFixed(4)}</p>
       <Bar data={data} options={options} />
+      <img width={'100%'} src={`data:image/png;base64,${shapPlot}`} alt="SHAP Visualization" />
     </div>
   );
 };
