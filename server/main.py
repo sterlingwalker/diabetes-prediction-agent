@@ -51,13 +51,9 @@ app.add_middleware(
 
 
 class PatientData(BaseModel):
-    Pregnancies: Union[float, str] = 0.0
     Glucose: Union[float, str] = 0.0
     BloodPressure: Union[float, str] = 0.0
-    SkinThickness: Union[float, str] = 0.0
-    Insulin: Union[float, str] = 0.0
     BMI: Union[float, str] = 0.0
-    DiabetesPedigreeFunction: Union[float, str] = 0.0
     Age: Union[float, str] = 0.0
     Gender: Union[float, str] = 0.0
     Ethnicity: Union[float, str] = 0.0
@@ -82,6 +78,26 @@ default_modes = {
     'Gender': 1      
 }
 
+# Load FAISS Indexes
+faiss_base_path = os.getcwd()  # Sets FAISS index path to the current directory
+openai_embeddings = OpenAIEmbeddings(model="text-embedding-ada-002")
+vectorstores = {
+    "Endocrinology": FAISS.load_local(os.path.join(faiss_base_path, "faiss_endocrinology"), openai_embeddings, allow_dangerous_deserialization=True),
+    "Dietitian": FAISS.load_local(os.path.join(faiss_base_path, "faiss_dietitian"), openai_embeddings, allow_dangerous_deserialization=True),
+    "Exercise": FAISS.load_local(os.path.join(faiss_base_path, "faiss_exercise"), openai_embeddings, allow_dangerous_deserialization=True)
+}
+
+# Function to retrieve FAISS-based guidelines
+def get_guideline_evidence(patient_data, risk_result, category):
+    diabetes_status = "diabetes" if risk_result["predictedRisk"] == "Diabetes" else "no diabetes"
+    query = f"diabetes treatment guidelines {diabetes_status}"
+    retriever = vectorstores[category].as_retriever(search_type="similarity", search_kwargs={"k": 3})
+    retrieved_docs = retriever.invoke(query)
+
+    if not retrieved_docs:
+        return "No specific guidelines found, but consider best practices in the field."
+    
+    return "\n".join([doc.page_content for doc in retrieved_docs])
 
 # Define Chat Request Model
 class ChatRequest(BaseModel):
@@ -382,25 +398,29 @@ def get_biomedical_evidence(patient_data):
 
 
 
-# Create Patient Context for LLM
-def create_dynamic_context(patient_data, evidence, risk_result):
-    context = (
+
+# Function to create context for LangChain agents
+def create_dynamic_context(patient_data, risk_result, guideline_evidence):
+    return (
         f"**Patient Details:**\n"
         f"- Age: {patient_data.get('Age', 'Unknown')}\n"
         f"- BMI: {patient_data.get('BMI', 'Unknown')}\n"
         f"- Glucose: {patient_data.get('Glucose', 'Unknown')}\n"
         f"- Diabetes Prediction: {risk_result.get('predictedRisk', 'Unknown')} "
         f"({risk_result.get('riskProbability', 'N/A')})\n\n"
-        "**Relevant Biomedical Evidence:**\n" +
-        "\n".join(f"- {e}" for e in evidence)
+        "**Relevant Clinical Guidelines (FAISS Retrieval):**\n" + guideline_evidence
     )
-    return context
 
 
 # Generate Expert Recommendations
 def get_expert_recommendations(patient_data, risk_result):
-    evidence = get_biomedical_evidence(patient_data)
-    context = create_dynamic_context(patient_data, evidence, risk_result)
+    guideline_evidence = {
+        "Endocrinology": get_guideline_evidence(patient_data, risk_result, "Endocrinology"),
+        "Dietitian": get_guideline_evidence(patient_data, risk_result, "Dietitian"),
+        "Exercise": get_guideline_evidence(patient_data, risk_result, "Exercise")
+    }
+    context = create_dynamic_context(patient_data, risk_result, "\n".join(guideline_evidence.values()))
+
 
     expert_prompts = {
         "Endocrinologist": PromptTemplate(
@@ -409,7 +429,7 @@ def get_expert_recommendations(patient_data, risk_result):
                 "As an endocrinologist, provide a diabetes treatment plan.\n"
                 "Patient Data: {patient}\n\n"
                 "Risk Result: {risk_result}\n\n"
-                "Based on the following biomedical evidence:\n{context}\n\n"
+                "Based on the following clinical guidelines:\n{context}\n\n"
                 "Provide a structured treatment plan."
             )
         ),
@@ -419,7 +439,7 @@ def get_expert_recommendations(patient_data, risk_result):
                 "As a dietitian, create a meal plan for the following patient:\n"
                 "Patient Data: {patient}\n\n"
                 "Risk Result: {risk_result}\n\n"
-                "Based on the following biomedical evidence:\n{context}\n\n"
+                "Based on the following dietitian guidelines:\n{context}\n\n"
                 "Provide structured dietary recommendations."
             )
         ),
@@ -429,20 +449,12 @@ def get_expert_recommendations(patient_data, risk_result):
                 "As a fitness expert, create a weekly exercise plan:\n"
                 "Patient Data: {patient}\n\n"
                 "Risk Result: {risk_result}\n\n"
-                "Based on the following biomedical evidence:\n{context}\n\n"
+                "Based on the following exercise guidelines:\n{context}\n\n"
                 "Provide structured exercise recommendations."
             )
         )
     }
 
-    expert_recommendations = {}
-    for expert, prompt in expert_prompts.items():
-        expert_chain = LLMChain(llm=llm, prompt=prompt)
-        expert_recommendations[expert] = expert_chain.run(
-            patient=str(patient_data), context=context, risk_result=str(risk_result)
-        )
-    
-    return expert_recommendations
               
 # Generate Final Consolidated Recommendation
 def get_final_recommendation(patient_data, expert_recommendations, risk_result):
