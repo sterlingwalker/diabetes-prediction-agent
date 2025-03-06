@@ -10,4 +10,4 @@ pydantic
 python-dotenv
 lightgbm
 matplotlib
-fiass-cpu
+faiss-cpu
