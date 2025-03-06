@@ -479,7 +479,7 @@ async def get_recommendations(patient: PatientData):
 @app.post("/chat")
 async def chat(chat_request: ChatRequest):
     try:
-        # ✅ Validate and Clean `patient_data`
+        # Validate and Clean `patient_data`
         cleaned_patient_data = {}
         for key, value in chat_request.patient_data.items():
             try:
@@ -490,10 +490,10 @@ async def chat(chat_request: ChatRequest):
                 raise HTTPException(status_code=400, detail=f"Invalid input for {key}: {value}")
 
 
-        # ✅ Ensure `recommendations` are strings
+        #  Ensure `recommendations` are strings
         cleaned_recommendations = {k: str(v) if isinstance(v, str) else "" for k, v in chat_request.recommendations.items()}
 
-        # ✅ Validate `history`
+        # Validate `history`
         validated_history = []
         for msg in chat_request.history:
             if isinstance(msg, dict) and "role" in msg and "content" in msg:
@@ -502,30 +502,30 @@ async def chat(chat_request: ChatRequest):
                 logger.error(f"Invalid chat history entry: {msg}")
                 raise HTTPException(status_code=400, detail="Invalid chat history format.")
 
-        # ✅ Convert `risk_probability` to a float and back to a string
+        # Convert `risk_probability` to a float and back to a string
         try:
             risk_probability = str(float(chat_request.risk_probability.strip().replace("%", "")))
         except ValueError:
             logger.error(f"Invalid risk probability: {chat_request.risk_probability}")
             raise HTTPException(status_code=400, detail=f"Invalid risk probability: {chat_request.risk_probability}")
-       # ✅ Format history, patient data, and recommendations for LLM
+       # Format history, patient data, and recommendations for LLM
         formatted_history = "\n".join(
             [f"**{msg['role'].capitalize()}**: {msg['content']}" for msg in validated_history]
         )
         formatted_patient_data = "\n".join([f"- {key}: {value}" for key, value in cleaned_patient_data.items()])
         formatted_recommendations = "\n".join([f"- {key}: {value}" for key, value in cleaned_recommendations.items()])
 
-        # ✅ Generate response from LLM
+        # Generate response from LLM
         response = chat_chain.run(
             history=formatted_history,
             user_input=chat_request.user_input,
             patient_data=formatted_patient_data,
             recommendations=formatted_recommendations,
             predicted_risk=chat_request.predicted_risk,
-            risk_probability=risk_probability  # ✅ Ensuring it's a valid number as a string
+            risk_probability=risk_probability  #  Ensuring it's a valid number as a string
         )
 
-        # ✅ Append assistant's response to chat history
+        #  Append assistant's response to chat history
         chat_request.history.append({"role": "assistant", "content": response})
           
         return {
