@@ -458,7 +458,7 @@ def get_expert_recommendations(patient_data, risk_result):
                 "Patient Data: {patient}\n\n"
                 "Risk Result: {risk_result}\n\n"
                 "Based on the following clinical guidelines:\n{context}\n\n"
-                "Provide a structured treatment plan."
+                "Provide a structured treatment plan and reference any guidelines."
             )
         ),
         "Dietitian": PromptTemplate(
@@ -468,7 +468,7 @@ def get_expert_recommendations(patient_data, risk_result):
                 "Patient Data: {patient}\n\n"
                 "Risk Result: {risk_result}\n\n"
                 "Based on the following dietitian guidelines:\n{context}\n\n"
-                "Provide structured dietary recommendations."
+                "Provide structured dietary recommendations and reference any guidelines."
             )
         ),
         "Fitness Expert": PromptTemplate(
@@ -478,7 +478,7 @@ def get_expert_recommendations(patient_data, risk_result):
                 "Patient Data: {patient}\n\n"
                 "Risk Result: {risk_result}\n\n"
                 "Based on the following exercise guidelines:\n{context}\n\n"
-                "Provide structured exercise recommendations."
+                "Provide structured exercise recommendations and reference any guidelines."
             )
         )
     }
@@ -496,14 +496,14 @@ def get_expert_recommendations(patient_data, risk_result):
             )
 
             if not expert_recommendations[expert]:  # Ensure it's not empty
-                logger.warning(f"⚠️ {expert} LLM response was empty!")
+                logger.warning(f" {expert} LLM response was empty!")
                 expert_recommendations[expert] = "No recommendation available."
 
         except Exception as e:
-            logger.error(f"❌ Error in LLM chain for {expert}: {str(e)}")
+            logger.error(f" Error in LLM chain for {expert}: {str(e)}")
             expert_recommendations[expert] = "Error generating recommendation."
 
-    logger.info(f"✅ Expert Recommendations: {expert_recommendations}")
+    logger.info(f" Expert Recommendations: {expert_recommendations}")
     return expert_recommendations
     
               
