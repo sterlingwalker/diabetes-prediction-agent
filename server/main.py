@@ -377,6 +377,12 @@ def compute_shap_plot(shap_values, shap_base_value, patient_df):
         return None  # Return None instead of breaking the pipeline
 
 
+import numpy as np
+import shap
+import matplotlib.pyplot as plt
+import io
+import base64
+
 def compute_shap_plot_percentage(shap_values, shap_base_value, patient_df):
     """
     Generates a SHAP Waterfall plot with percentage-based contributions instead of log-odds.
