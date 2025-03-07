@@ -232,6 +232,7 @@ def predict_diabetes_risk(patient_data: dict, compute_shap: bool = True):
             #shap_plot_base64 = compute_shap_plot(list(shap_values.values()), shap_base_value, patient_df)
             shap_plot_base64 = compute_shap_plot_percentage(list(shap_values.values()), shap_base_value, patient_df)
             
+            
 
             result.update({
                 "shapValues": shap_values,
@@ -401,27 +402,31 @@ def compute_shap_plot_percentage(shap_values, shap_base_value, patient_df):
         base_probability = (1 / (1 + np.exp(-shap_base_value))) * 100
 
         # **Convert SHAP values from log-odds to probability (%) changes**
-        percentage_contributions = [
+        percentage_contributions = np.array([
             ((1 / (1 + np.exp(-(shap_base_value + value)))) * 100 - base_probability)
             for value in shap_values_array
-        ]
+        ])
 
         # **Ensure feature names match the length of SHAP values**
         feature_names = list(patient_df.columns[:len(percentage_contributions)])
 
         # **Convert data for SHAP plot**
-        percentage_contributions = np.array(percentage_contributions, dtype=np.float64).tolist()
+        percentage_contributions = np.array(percentage_contributions, dtype=np.float64)
         base_probability = float(base_probability)  # Ensure it's a float
-        data_values = patient_df.iloc[0][feature_names].tolist()
+        data_values = patient_df.iloc[0][feature_names].values.astype(float)  # Convert Pandas Series to array
 
         # **Initialize Figure**
         fig, ax = plt.subplots(figsize=(8, 6))
+
+        logger.info(f"SHAP Values Type: {type(percentage_contributions)}, Shape: {percentage_contributions.shape}")
+        logger.info(f"Base Probability: {base_probability}, Type: {type(base_probability)}")
+        logger.info(f"Feature Names: {feature_names}, Length: {len(feature_names)}")
 
         # **Create SHAP Waterfall Plot (in Percentage)**
         shap.waterfall_plot(shap.Explanation(
             values=percentage_contributions,  # SHAP contributions in probability space
             base_values=base_probability,  # SHAP base value in percentage
-            data=data_values,  # Feature values as a list
+            data=data_values,  # Feature values as a NumPy array
             feature_names=feature_names
         ))
 
@@ -434,11 +439,9 @@ def compute_shap_plot_percentage(shap_values, shap_base_value, patient_df):
         # **Encode the image as a base64 string**
         shap_plot_base64 = base64.b64encode(buf.read()).decode("utf-8")
 
-        return shap_plot_base64
+        return shap_plot_base
 
-    except Exception as e:
-        logger.error(f"Error generating SHAP percentage plot: {str(e)}")
-        return None  # Return None instead of breaking the pipeline        
+
 # Middleware to log requests and prevent response stream errors
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
