@@ -441,17 +441,14 @@ def create_dynamic_context(patient_data, risk_result, guideline_evidence):
         "**Relevant Clinical Guidelines (FAISS Retrieval):**\n" + guideline_evidence
     )
 
-
-# Generate Expert Recommendations
 def get_expert_recommendations(patient_data, risk_result):
     guideline_evidence = {
         "Endocrinology": get_guideline_evidence(patient_data, risk_result, "Endocrinology"),
         "Dietitian": get_guideline_evidence(patient_data, risk_result, "Dietitian"),
         "Exercise": get_guideline_evidence(patient_data, risk_result, "Exercise")
     }
-    
-    context = create_dynamic_context(patient_data, risk_result, "\n".join(guideline_evidence.values()))
 
+    context = create_dynamic_context(patient_data, risk_result, "\n".join(guideline_evidence.values()))
 
     expert_prompts = {
         "Endocrinologist": PromptTemplate(
@@ -486,6 +483,29 @@ def get_expert_recommendations(patient_data, risk_result):
         )
     }
 
+    expert_recommendations = {}
+    llm = ChatOpenAI(model_name="gpt-4", temperature=0.7)
+
+    for expert, prompt in expert_prompts.items():
+        try:
+            expert_chain = LLMChain(llm=llm, prompt=prompt)
+            expert_recommendations[expert] = expert_chain.run(
+                patient=str(patient_data),
+                context=context,
+                risk_result=str(risk_result)
+            )
+
+            if not expert_recommendations[expert]:  # Ensure it's not empty
+                logger.warning(f"⚠️ {expert} LLM response was empty!")
+                expert_recommendations[expert] = "No recommendation available."
+
+        except Exception as e:
+            logger.error(f"❌ Error in LLM chain for {expert}: {str(e)}")
+            expert_recommendations[expert] = "Error generating recommendation."
+
+    logger.info(f"✅ Expert Recommendations: {expert_recommendations}")
+    return expert_recommendations
+    
               
 # Generate Final Consolidated Recommendation
 def get_final_recommendation(patient_data, expert_recommendations, risk_result):
