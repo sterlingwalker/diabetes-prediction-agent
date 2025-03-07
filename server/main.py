@@ -229,7 +229,7 @@ def predict_diabetes_risk(patient_data: dict, compute_shap: bool = True):
         # **Compute SHAP Values ONLY if requested (i.e., from /predict API)**
         if compute_shap:
             shap_values, shap_base_value = compute_shap_values(selected_model, patient_df)
-            shap_plot_base64 = compute_shap_plot(list(shap_values.values()), patient_df)
+            shap_plot_base64 = compute_shap_plot(list(shap_values.values()), shap_base_value, patient_df)
 
             result.update({
                 "shapValues": shap_values,
@@ -340,7 +340,7 @@ def compute_shap_values(model, patient_df):
         return {}, None  # Prevents pipeline failure        
 
 
-def compute_shap_plot(shap_values, patient_df):
+def compute_shap_plot(shap_values, shap_base_value, patient_df):
     """
     Generates a SHAP Waterfall plot and returns it as a base64 string.
     Ensures compatibility with LightGBM & Random Forest models.
@@ -355,7 +355,7 @@ def compute_shap_plot(shap_values, patient_df):
         # **Create SHAP Waterfall Plot**
         shap.waterfall_plot(shap.Explanation(
             values=shap_values_array[0],  # Use the first row
-            base_values=shap_values[0],   # Base value for individual prediction
+            base_values=shap_base_value,   # Base value for individual prediction
             data=patient_df.iloc[0],      # Feature values
             feature_names=patient_df.columns
         ))
