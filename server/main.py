@@ -378,6 +378,12 @@ def compute_shap_plot(shap_values, shap_base_value, patient_df):
         return None  # Return None instead of breaking the pipeline
 
 
+import numpy as np
+import shap
+import matplotlib.pyplot as plt
+import io
+import base64
+
 def compute_shap_plot_percentage(shap_values, shap_base_value, patient_df):
     """
     Generates a SHAP Waterfall plot with percentage-based contributions instead of log-odds.
@@ -388,29 +394,34 @@ def compute_shap_plot_percentage(shap_values, shap_base_value, patient_df):
         shap_values_array = np.array(shap_values, dtype=np.float64).reshape(-1)
 
         # **Ensure SHAP base value is a scalar, not an array**
-        if isinstance(shap_base_value, np.ndarray):
-            shap_base_value = shap_base_value.item()
+        if isinstance(shap_base_value, (list, np.ndarray)):
+            shap_base_value = float(np.mean(shap_base_value))  # Convert to single float
 
         # **Convert SHAP base value (log-odds) to probability (%)**
-        base_probability = 1 / (1 + np.exp(-shap_base_value)) * 100
+        base_probability = (1 / (1 + np.exp(-shap_base_value))) * 100
 
         # **Convert SHAP values from log-odds to probability (%) changes**
-        percentage_contributions = np.array([
-            (1 / (1 + np.exp(-(shap_base_value + value)))) * 100 - base_probability
+        percentage_contributions = [
+            ((1 / (1 + np.exp(-(shap_base_value + value)))) * 100 - base_probability)
             for value in shap_values_array
-        ])
+        ]
 
         # **Ensure feature names match the length of SHAP values**
         feature_names = list(patient_df.columns[:len(percentage_contributions)])
+
+        # **Convert data for SHAP plot**
+        percentage_contributions = np.array(percentage_contributions, dtype=np.float64).tolist()
+        base_probability = float(base_probability)  # Ensure it's a float
+        data_values = patient_df.iloc[0][feature_names].tolist()
 
         # **Initialize Figure**
         fig, ax = plt.subplots(figsize=(8, 6))
 
         # **Create SHAP Waterfall Plot (in Percentage)**
         shap.waterfall_plot(shap.Explanation(
-            values=percentage_contributions.tolist(),  # Convert back to list for SHAP
+            values=percentage_contributions,  # SHAP contributions in probability space
             base_values=base_probability,  # SHAP base value in percentage
-            data=patient_df.iloc[0][feature_names],  # Feature values
+            data=data_values,  # Feature values as a list
             feature_names=feature_names
         ))
 
@@ -427,8 +438,7 @@ def compute_shap_plot_percentage(shap_values, shap_base_value, patient_df):
 
     except Exception as e:
         logger.error(f"Error generating SHAP percentage plot: {str(e)}")
-        return None  # Return None instead of breaking the pipeline
-        
+        return None  # Return None instead of breaking the pipeline        
 # Middleware to log requests and prevent response stream errors
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
