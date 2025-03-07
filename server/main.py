@@ -439,7 +439,7 @@ def compute_shap_plot_percentage(shap_values, shap_base_value, patient_df):
         # **Encode the image as a base64 string**
         shap_plot_base64 = base64.b64encode(buf.read()).decode("utf-8")
 
-        return shap_plot_base
+        return shap_plot_base64
 
 
 # Middleware to log requests and prevent response stream errors
