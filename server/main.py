@@ -78,26 +78,57 @@ default_modes = {
     'Gender': 1      
 }
 
-# Load FAISS Indexes
-faiss_base_path = os.getcwd()  # Sets FAISS index path to the current directory
+# Load FAISS Indexes with Enhanced Debugging
+faiss_base_path = os.getcwd()  # Ensure FAISS index path is set correctly
 openai_embeddings = OpenAIEmbeddings(model="text-embedding-ada-002")
-vectorstores = {
-    "Endocrinology": FAISS.load_local(os.path.join(faiss_base_path, "faiss_endocrinology"), openai_embeddings, allow_dangerous_deserialization=True),
-    "Dietitian": FAISS.load_local(os.path.join(faiss_base_path, "faiss_dietitian"), openai_embeddings, allow_dangerous_deserialization=True),
-    "Exercise": FAISS.load_local(os.path.join(faiss_base_path, "faiss_exercise"), openai_embeddings, allow_dangerous_deserialization=True)
-}
 
-# Function to retrieve FAISS-based guidelines
+vectorstores = {}
+
+faiss_categories = ["Endocrinology", "Dietitian", "Exercise"]
+
+for category in faiss_categories:
+    index_path = os.path.join(faiss_base_path, f"faiss_{category.lower()}")
+    
+    try:
+        logger.info(f"Loading FAISS index for {category} from {index_path} ...")
+        vectorstores[category] = FAISS.load_local(index_path, openai_embeddings, allow_dangerous_deserialization=True)
+        logger.info(f" Successfully loaded FAISS index for {category}.")
+    except FileNotFoundError:
+        logger.error(f" FAISS index not found for {category} at {index_path}. Ensure the index is correctly saved.")
+    except Exception as e:
+        logger.error(f" Failed to load FAISS index for {category}: {str(e)}")
+
+
+
 def get_guideline_evidence(patient_data, risk_result, category):
+    """
+    Retrieves the most relevant guidelines based on whether the patient has diabetes (yes/no).
+    Adds detailed logging to debug FAISS retrieval issues.
+    """
+    if category not in vectorstores:
+        logger.warning(f"⚠FAISS index for {category} is missing. Skipping retrieval.")
+        return "No specific guidelines found, but consider best practices in the field."
+
     diabetes_status = "diabetes" if risk_result["predictedRisk"] == "Diabetes" else "no diabetes"
     query = f"diabetes treatment guidelines {diabetes_status}"
-    retriever = vectorstores[category].as_retriever(search_type="similarity", search_kwargs={"k": 3})
-    retrieved_docs = retriever.invoke(query)
-
-    if not retrieved_docs:
-        return "No specific guidelines found, but consider best practices in the field."
     
-    return "\n".join([doc.page_content for doc in retrieved_docs])
+    logger.info(f"🔍 Retrieving FAISS guidelines for {category} using query: '{query}'")
+
+    try:
+        retriever = vectorstores[category].as_retriever(search_type="similarity", search_kwargs={"k": 3})
+        retrieved_docs = retriever.invoke(query)
+        
+        if not retrieved_docs:
+            logger.warning(f" No FAISS guidelines found for {category} using query: '{query}'")
+            return "No specific guidelines found, but consider best practices in the field."
+
+        logger.info(f"Retrieved {len(retrieved_docs)} guideline(s) for {category}.")
+        return "\n".join([doc.page_content for doc in retrieved_docs])
+
+    except Exception as e:
+        logger.error(f" FAISS retrieval error for {category}: {str(e)}")
+        return "Error retrieving guidelines. Please consult a healthcare provider."
+        
 
 # Define Chat Request Model
 class ChatRequest(BaseModel):
@@ -487,45 +518,35 @@ def get_final_recommendation(patient_data, expert_recommendations, risk_result):
 @app.post("/recommendations")
 async def get_recommendations(patient: PatientData):
     try:
-        patient_data = {}
-        for key, value in patient.model_dump().items():
-            try:
-                cleaned_value = str(value).strip().replace("`", "").replace("'", "")
+        patient_data = {k: float(v) if str(v).strip() else np.nan for k, v in patient.model_dump().items()}
+        logger.info(f" Received patient data for recommendations: {patient_data}")
 
-                # Handle empty strings by setting them to NaN (Not 0.0)
-                if cleaned_value == "":
-                    patient_data[key] = np.nan  # Keeps missing values as NaN
-                else:
-                    patient_data[key] = float(cleaned_value)
-
-            except ValueError:
-                logger.error(f"Invalid input for {key}: {value}")
-                raise HTTPException(status_code=400, detail=f"Invalid input for {key}: {value}")
-
-        logger.info(f"Received patient data for recommendations: {patient_data}")
-
-        # **SHAP Computation Disabled**
         risk_result = predict_diabetes_risk(patient_data, compute_shap=False)
         logger.info(f"Risk Prediction: {risk_result}")
 
-        # Generate expert recommendations
         expert_recommendations = get_expert_recommendations(patient_data, risk_result)
-        logger.info(f"Expert Recommendations: {expert_recommendations}")
 
-        # Generate final consolidated recommendation
+        # Log FAISS retrieval issues explicitly
+        if not expert_recommendations:
+            logger.warning(" Expert recommendations returned None or empty.")
+            expert_recommendations = {
+                "Endocrinologist": "No recommendations available.",
+                "Dietitian": "No recommendations available.",
+                "Fitness Expert": "No recommendations available."
+            }
+
         final_recommendation = get_final_recommendation(patient_data, expert_recommendations, risk_result)
 
         return {
-            "endocrinologistRecommendation": expert_recommendations["Endocrinologist"],
-            "dietitianRecommendation": expert_recommendations["Dietitian"],
-            "fitnessRecommendation": expert_recommendations["Fitness Expert"],
+            "endocrinologistRecommendation": expert_recommendations.get("Endocrinologist", "No data"),
+            "dietitianRecommendation": expert_recommendations.get("Dietitian", "No data"),
+            "fitnessRecommendation": expert_recommendations.get("Fitness Expert", "No data"),
             "finalRecommendation": final_recommendation
         }
 
     except Exception as e:
         logger.error(f"Error processing recommendations: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.post("/chat")
 async def chat(chat_request: ChatRequest):
