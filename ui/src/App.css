@@ -36,19 +36,13 @@
     transform: rotate(360deg);
   }
 }
-
-
-.reviewContainer p {
-  margin: 0;
-  padding: 0;
-}
-
-.reviewContainer ol,
-.reviewContainer ul {
-  margin: 0;
-  padding-left: 20px;
-}
-
-.reviewContainer li {
-  margin-bottom: 0px;
-}
+.reviewContainer {
+  p {
+    margin: 0;
+  }
+  ul {
+    margin: 0;
+  }
+  ol {
+    margin: 0;
+  }
