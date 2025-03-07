@@ -458,7 +458,8 @@ def get_expert_recommendations(patient_data, risk_result):
                 "Patient Data: {patient}\n\n"
                 "Risk Result: {risk_result}\n\n"
                 "Based on the following clinical guidelines:\n{context}\n\n"
-                "Provide a structured treatment plan and reference any guidelines."
+                "Provide a structured treatment plan."
+                "Respond in markup format"
             )
         ),
         "Dietitian": PromptTemplate(
@@ -468,7 +469,8 @@ def get_expert_recommendations(patient_data, risk_result):
                 "Patient Data: {patient}\n\n"
                 "Risk Result: {risk_result}\n\n"
                 "Based on the following dietitian guidelines:\n{context}\n\n"
-                "Provide structured dietary recommendations and reference any guidelines."
+                "Provide structured dietary recommendations."
+                "Respond in markup format"
             )
         ),
         "Fitness Expert": PromptTemplate(
@@ -478,7 +480,8 @@ def get_expert_recommendations(patient_data, risk_result):
                 "Patient Data: {patient}\n\n"
                 "Risk Result: {risk_result}\n\n"
                 "Based on the following exercise guidelines:\n{context}\n\n"
-                "Provide structured exercise recommendations and reference any guidelines."
+                "Provide structured exercise recommendations."
+                "Respond in markup format"                
             )
         )
     }
@@ -519,7 +522,8 @@ def get_final_recommendation(patient_data, expert_recommendations, risk_result):
             "**Endocrinologist Recommendation:**\n{endocrinologist}\n\n"
             "**Dietitian Recommendation:**\n{dietitian}\n\n"
             "**Fitness Expert Recommendation:**\n{fitness}\n\n"
-            "Create a final health plan integrating all recommendations."
+            "Create a final health plan summarizing all recommendations."
+            "Respond in markup format"            
         )
     )
 
