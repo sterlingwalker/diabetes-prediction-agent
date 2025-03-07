@@ -229,6 +229,7 @@ def predict_diabetes_risk(patient_data: dict, compute_shap: bool = True):
         # **Compute SHAP Values ONLY if requested (i.e., from /predict API)**
         if compute_shap:
             shap_values, shap_base_value = compute_shap_values(selected_model, patient_df)
+            #shap_plot_base64 = compute_shap_plot(list(shap_values.values()), shap_base_value, patient_df)
             shap_plot_base64 = compute_shap_plot_percentage(list(shap_values.values()), shap_base_value, patient_df)
 
             result.update({
