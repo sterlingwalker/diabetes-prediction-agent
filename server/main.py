@@ -373,17 +373,9 @@ def compute_shap_plot(shap_values, shap_base_value, patient_df):
         shap_plot_base64 = base64.b64encode(buf.read()).decode("utf-8")
 
         return shap_plot_base64
-
     except Exception as e:
         logger.error(f"Error generating SHAP plot: {str(e)}")
         return None  # Return None instead of breaking the pipeline
-
-
-import numpy as np
-import shap
-import matplotlib.pyplot as plt
-import io
-import base64
 
 def compute_shap_plot_percentage(shap_values, shap_base_value, patient_df):
     """
@@ -440,6 +432,9 @@ def compute_shap_plot_percentage(shap_values, shap_base_value, patient_df):
         shap_plot_base64 = base64.b64encode(buf.read()).decode("utf-8")
 
         return shap_plot_base64
+    except Exception as e:
+        logger.error(f"Error generating SHAP plot: {str(e)}")
+        return None  # Return None instead of breaking the pipeline        
 
 
 # Middleware to log requests and prevent response stream errors
