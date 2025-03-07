@@ -61,7 +61,15 @@ export default function Review({ response }) {
               variant="body2"
               sx={{ textAlign: "left", whiteSpace: "pre-wrap" }}
             >
-              <ReactMarkdown>{response?.dietitianRecommendation}</ReactMarkdown>
+              <ReactMarkdown
+              components={{
+                p: ({ node, ...props }) => <Typography variant="body2" sx={{ marginBottom: "0px" }} {...props} />,
+                ol: ({ node, ...props }) => <ol style={{ margin: "0", paddingLeft: "20px" }} {...props} />,
+                ul: ({ node, ...props }) => <ul style={{ margin: "0", paddingLeft: "20px" }} {...props} />,
+                li: ({ node, ...props }) => <li style={{ marginBottom: "0px" }} {...props} />,
+              }}
+            >  
+                {response?.dietitianRecommendation}</ReactMarkdown>
             </Typography>
           </Stack>
         </React.Fragment>
@@ -81,7 +89,15 @@ export default function Review({ response }) {
               variant="body2"
               sx={{ textAlign: "left", whiteSpace: "pre-wrap" }}
             >
-              <ReactMarkdown>{response?.fitnessRecommendation}</ReactMarkdown>
+             <ReactMarkdown
+              components={{
+                p: ({ node, ...props }) => <Typography variant="body2" sx={{ marginBottom: "0px" }} {...props} />,
+                ol: ({ node, ...props }) => <ol style={{ margin: "0", paddingLeft: "20px" }} {...props} />,
+                ul: ({ node, ...props }) => <ul style={{ margin: "0", paddingLeft: "20px" }} {...props} />,
+                li: ({ node, ...props }) => <li style={{ marginBottom: "0px" }} {...props} />,
+              }}
+            >
+                {response?.fitnessRecommendation}</ReactMarkdown>
             </Typography>
           </Stack>
         </React.Fragment>
@@ -101,7 +117,15 @@ export default function Review({ response }) {
               variant="body2"
               sx={{ textAlign: "left", whiteSpace: "pre-wrap" }}
             >
-              <ReactMarkdown>{response?.finalRecommendation}</ReactMarkdown>
+             <ReactMarkdown
+              components={{
+                p: ({ node, ...props }) => <Typography variant="body2" sx={{ marginBottom: "0px" }} {...props} />,
+                ol: ({ node, ...props }) => <ol style={{ margin: "0", paddingLeft: "20px" }} {...props} />,
+                ul: ({ node, ...props }) => <ul style={{ margin: "0", paddingLeft: "20px" }} {...props} />,
+                li: ({ node, ...props }) => <li style={{ marginBottom: "0px" }} {...props} />,
+              }}
+            >
+              {response?.finalRecommendation}</ReactMarkdown>
             </Typography>
           </Stack>
         </React.Fragment>
