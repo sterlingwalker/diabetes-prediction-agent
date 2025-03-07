@@ -229,13 +229,8 @@ def predict_diabetes_risk(patient_data: dict, compute_shap: bool = True):
         # **Compute SHAP Values ONLY if requested (i.e., from /predict API)**
         if compute_shap:
             shap_values, shap_base_value = compute_shap_values(selected_model, patient_df)
-            
-            # Ensure SHAP explainer is initialized
-            explainer = shap.TreeExplainer(selected_model)
-        
-            #  FIX: Pass `explainer` as the first argument
-            shap_plot_base64 = compute_shap_plot(explainer, list(shap_values.values()), patient_df)
-        
+            shap_plot_base64 = compute_shap_plot(list(shap_values.values()), patient_df)
+
             result.update({
                 "shapValues": shap_values,
                 "shapBaseValue": shap_base_value,
@@ -343,23 +338,14 @@ def compute_shap_values(model, patient_df):
     except Exception as e:
         logger.error(f" Error computing SHAP values: {str(e)}")
         return {}, None  # Prevents pipeline failure        
-import numpy as np
-import shap
-import matplotlib.pyplot as plt
-import io
-import base64
 
-def compute_shap_plot(explainer, shap_values, patient_df):
+
+def compute_shap_plot(shap_values, patient_df):
     """
     Generates a SHAP Waterfall plot and returns it as a base64 string.
     Ensures compatibility with LightGBM & Random Forest models.
-    
-    Fix: Uses the correct base value from `explainer.expected_value`.
     """
     try:
-        # **Extract correct SHAP base value**
-        base_value = explainer.expected_value[1]  # For binary classification (Diabetes class)
-
         # **Convert list of shap values to NumPy array**
         shap_values_array = np.array(shap_values).reshape(1, -1)
 
@@ -368,8 +354,8 @@ def compute_shap_plot(explainer, shap_values, patient_df):
 
         # **Create SHAP Waterfall Plot**
         shap.waterfall_plot(shap.Explanation(
-            values=shap_values_array[0],  # Feature attributions
-            base_values=base_value,       # Correct base value from explainer
+            values=shap_values_array[0],  # Use the first row
+            base_values=shap_values[0],   # Base value for individual prediction
             data=patient_df.iloc[0],      # Feature values
             feature_names=patient_df.columns
         ))
