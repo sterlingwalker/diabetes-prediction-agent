@@ -378,7 +378,6 @@ def compute_shap_plot(shap_values, shap_base_value, patient_df):
         return None  # Return None instead of breaking the pipeline
 
 
-
 def compute_shap_plot_percentage(shap_values, shap_base_value, patient_df):
     """
     Generates a SHAP Waterfall plot with percentage-based contributions instead of log-odds.
@@ -386,7 +385,11 @@ def compute_shap_plot_percentage(shap_values, shap_base_value, patient_df):
     """
     try:
         # **Ensure SHAP values are a NumPy array**
-        shap_values_array = np.array(shap_values).reshape(-1)
+        shap_values_array = np.array(shap_values, dtype=np.float64).reshape(-1)
+
+        # **Ensure SHAP base value is a scalar, not an array**
+        if isinstance(shap_base_value, np.ndarray):
+            shap_base_value = shap_base_value.item()
 
         # **Convert SHAP base value (log-odds) to probability (%)**
         base_probability = 1 / (1 + np.exp(-shap_base_value)) * 100
@@ -397,7 +400,7 @@ def compute_shap_plot_percentage(shap_values, shap_base_value, patient_df):
             for value in shap_values_array
         ])
 
-        # **Ensure feature names match length of SHAP values**
+        # **Ensure feature names match the length of SHAP values**
         feature_names = list(patient_df.columns[:len(percentage_contributions)])
 
         # **Initialize Figure**
