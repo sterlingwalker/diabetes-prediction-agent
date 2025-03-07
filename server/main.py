@@ -385,19 +385,21 @@ def compute_shap_plot_percentage(shap_values, shap_base_value, patient_df):
         # **Convert SHAP base value (log-odds) to probability (%)**
         base_probability = 1 / (1 + np.exp(-shap_base_value)) * 100
 
+        # **Ensure SHAP values are a NumPy array**
+        shap_values_array = np.array(shap_values).reshape(-1)
+
         # **Convert SHAP values from log-odds to probability (%) changes**
-        shap_values_array = np.array(shap_values).reshape(1, -1)
-        percentage_contributions = [
+        percentage_contributions = np.array([
             (1 / (1 + np.exp(-(shap_base_value + value)))) * 100 - base_probability
-            for value in shap_values_array[0]
-        ]
+            for value in shap_values_array
+        ])
 
         # **Initialize Figure**
         fig, ax = plt.subplots(figsize=(8, 6))
 
         # **Create SHAP Waterfall Plot (in Percentage)**
         shap.waterfall_plot(shap.Explanation(
-            values=percentage_contributions,  # SHAP contributions in probability space
+            values=percentage_contributions.tolist(),  # Convert back to list for SHAP
             base_values=base_probability,  # SHAP base value in percentage
             data=patient_df.iloc[0],  # Feature values
             feature_names=patient_df.columns
