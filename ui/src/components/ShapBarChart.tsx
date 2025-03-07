@@ -129,7 +129,6 @@ const ShapWaterfallChart = ({ shapResponse }) => {
     <div style={{ width: "100%", margin: "0 auto" }}>
       <h3>Model Used: {modelUsed}</h3>
       <p>SHAP Base Value: {shapBaseValue.toFixed(4)}</p>
-      <Bar data={data} options={options} />
       <img width={'100%'} src={`data:image/png;base64,${shapPlot}`} alt="SHAP Visualization" />
     </div>
   );
