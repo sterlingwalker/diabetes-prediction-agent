@@ -24,6 +24,7 @@ import matplotlib.pyplot as plt
 from imblearn.pipeline import Pipeline
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import FAISS
+import asyncio
 
 # Load environment variables
 load_dotenv()
