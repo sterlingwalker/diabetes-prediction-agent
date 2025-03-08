@@ -605,7 +605,7 @@ async def get_recommendations(patient: PatientData):
         risk_result = predict_diabetes_risk(patient_data, compute_shap=False)
         logger.info(f"Risk Prediction: {risk_result}")
 
-        expert_recommendations = get_expert_recommendations(patient_data, risk_result)
+        expert_recommendations = await get_expert_recommendations(patient_data, risk_result)
 
         # Log FAISS retrieval issues explicitly
         if not expert_recommendations:
@@ -617,6 +617,7 @@ async def get_recommendations(patient: PatientData):
             }
 
         final_recommendation = get_final_recommendation(patient_data, expert_recommendations, risk_result)
+        
 
         return {
             "endocrinologistRecommendation": expert_recommendations.get("Endocrinologist", "No data"),
