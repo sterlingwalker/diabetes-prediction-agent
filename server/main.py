@@ -150,7 +150,7 @@ except Exception as e:
     raise Exception("Error loading LightGBM or Random Forest models.") from e
 
 
-llm = ChatOpenAI(temperature=0.7, openai_api_key=openai_api_key) 
+llm = ChatOpenAI(temperature=0.4, openai_api_key=openai_api_key) 
 
 
 # Chat Agent Prompt with Risk & Probability
@@ -548,7 +548,7 @@ def get_expert_recommendations(patient_data, risk_result):
     }
 
     expert_recommendations = {}
-    llm = ChatOpenAI(model_name="gpt-4", temperature=0.7)
+    llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0.4)
 
     for expert, prompt in expert_prompts.items():
         try:
