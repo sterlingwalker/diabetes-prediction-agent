@@ -583,7 +583,7 @@ def get_final_recommendation(patient_data, expert_recommendations, risk_result):
             "**Endocrinologist Recommendation:**\n{endocrinologist}\n\n"
             "**Dietitian Recommendation:**\n{dietitian}\n\n"
             "**Fitness Expert Recommendation:**\n{fitness}\n\n"
-            "First explain the risk_result including SHAP values to the paitemt and then create a final health plan summarizing all recommendations."
+            "First explain the patients SHAP values and meaning and then create integrated final health plan summarizing all recommendations."
             "Respond in markup format"            
         )
     )
