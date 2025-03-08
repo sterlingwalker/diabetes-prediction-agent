@@ -112,7 +112,7 @@ def get_guideline_evidence(patient_data, risk_result, category):
     diabetes_status = "diabetes" if risk_result["predictedRisk"] == "Diabetes" else "no diabetes"
     query = f"diabetes treatment guidelines {diabetes_status}"
     
-    logger.info(f"🔍 Retrieving FAISS guidelines for {category} using query: '{query}'")
+    logger.info(f"Retrieving FAISS guidelines for {category} using query: '{query}'")
 
     try:
         retriever = vectorstores[category].as_retriever(search_type="similarity", search_kwargs={"k": 3})
@@ -227,8 +227,8 @@ def predict_diabetes_risk(patient_data: dict, compute_shap: bool = True):
         }
 
         # **Compute SHAP Values ONLY if requested (i.e., from /predict API)**
+        shap_values, shap_base_value = compute_shap_values(selected_model, patient_df)
         if compute_shap:
-            shap_values, shap_base_value = compute_shap_values(selected_model, patient_df)
             shap_plot_base64 = compute_shap_plot(list(shap_values.values()), shap_base_value, patient_df)
             #shap_plot_base64 = compute_shap_plot_percentage(list(shap_values.values()), shap_base_value, patient_df)
             
@@ -240,10 +240,10 @@ def predict_diabetes_risk(patient_data: dict, compute_shap: bool = True):
                 "shapPlot": shap_plot_base64
             })
         else:
-            # Do not include SHAP values in /recommendations response
+            # Do not include SHAP plot in /recommendations response
             result.update({
-                "shapValues": {},
-                "shapBaseValue": None,
+                "shapValues": shap_values,
+                "shapBaseValue": shap_base_value,
                 "shapPlot": None
             })
 
@@ -460,7 +460,7 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 if not openai_api_key:
     raise Exception("Missing OpenAI API key. Set OPENAI_API_KEY in environment variables.")
 
-llm = ChatOpenAI(temperature=0.7, openai_api_key=openai_api_key)
+llm = ChatOpenAI(temperature=0.4, openai_api_key=openai_api_key)
 
 
 # Biomedical Evidence Fetching Function
@@ -472,7 +472,7 @@ def get_biomedical_evidence(patient_data):
         query_parts.append(f"BMI {patient_data['BMI']}")
     
     query = " ".join(query_parts)
-    logger.info(f"🔍 Searching PubMed for: {query}")
+    logger.info(f" Searching PubMed for: {query}")
 
     pubmed_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term={query}&retmax=5&retmode=json"
     response = requests.get(pubmed_url).json()
@@ -583,7 +583,7 @@ def get_final_recommendation(patient_data, expert_recommendations, risk_result):
             "**Endocrinologist Recommendation:**\n{endocrinologist}\n\n"
             "**Dietitian Recommendation:**\n{dietitian}\n\n"
             "**Fitness Expert Recommendation:**\n{fitness}\n\n"
-            "Create a final health plan summarizing all recommendations."
+            "First explain the risk_result including SHAP values to the paitemt and then create a final health plan summarizing all recommendations."
             "Respond in markup format"            
         )
     )
