@@ -15,16 +15,16 @@ function MarkdownRenderer({ content }) {
     <ReactMarkdown
       components={{
         p: ({ node, ...props }) => (
-          <Typography variant="body2" sx={{ marginBottom: "4px" }} {...props} />
+          <Typography variant="body2" sx={{ textAlign: "left", marginBottom: "4px" }} {...props} />
         ),
         ol: ({ node, ...props }) => (
-          <ol style={{ margin: "0", paddingLeft: "20px" }} {...props} />
+          <ol style={{ textAlign: "left", margin: "0", paddingLeft: "20px" }} {...props} />
         ),
         ul: ({ node, ...props }) => (
-          <ul style={{ margin: "0", paddingLeft: "20px" }} {...props} />
+          <ul style={{ textAlign: "left", margin: "0", paddingLeft: "20px" }} {...props} />
         ),
         li: ({ node, ...props }) => (
-          <li style={{ marginBottom: "4px" }} {...props} />
+          <li style={{ textAlign: "left", marginBottom: "4px" }} {...props} />
         ),
       }}
     >
@@ -37,13 +37,13 @@ export default function Review({ response }) {
   return (
     <div className="reviewContainer">
       <Typography
-        sx={{ fontWeight: 400, fontSize: "20px", marginBottom: "16px" }}
+        sx={{ fontWeight: 400, fontSize: "20px", marginBottom: "16px", textAlign: "left" }}
         variant="subtitle2"
         gutterBottom
       >
         Recommendations
       </Typography>
-      <Grid container>
+      <Grid container sx={{ textAlign: "left" }}> {/* Ensure grid is left-aligned */}
         {[
           { title: "Endocrinologist", content: response?.endocrinologistRecommendation },
           { title: "Dietician", content: response?.dietitianRecommendation },
@@ -51,13 +51,18 @@ export default function Review({ response }) {
           { title: "Overall Recommendation", content: response?.finalRecommendation },
         ].map((item, index) => (
           <React.Fragment key={index}>
-            <Stack direction="column" spacing={1} sx={{ width: "100%", mb: 5 }}>
+            <Stack
+              direction="column"
+              spacing={1}
+              sx={{ width: "100%", mb: 5, alignItems: "flex-start" }} // Ensuring left alignment
+            >
               <Typography
                 variant="body1"
                 sx={{
                   fontWeight: 400,
                   fontSize: "16px",
                   color: "text.secondary",
+                  textAlign: "left", // Ensuring text alignment
                 }}
               >
                 {item.title}:
