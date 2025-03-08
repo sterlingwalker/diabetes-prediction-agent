@@ -548,7 +548,7 @@ async def get_expert_recommendations(patient_data, risk_result):
         )
     }
 
-    llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0.4)
+    llm = ChatOpenAI(model_name="gpt-4", temperature=0.4)
 
     async def fetch_recommendation(expert, prompt):
         try:
