@@ -230,8 +230,8 @@ def predict_diabetes_risk(patient_data: dict, compute_shap: bool = True):
         # **Compute SHAP Values ONLY if requested (i.e., from /predict API)**
         shap_values, shap_base_value = compute_shap_values(selected_model, patient_df)
         if compute_shap:
-            #shap_plot_base64 = compute_shap_plot(list(shap_values.values()), shap_base_value, patient_df)
-            shap_plot_base64 = compute_shap_plot_percentage(list(shap_values.values()), shap_base_value, patient_df)
+            shap_plot_base64 = compute_shap_plot(list(shap_values.values()), shap_base_value, patient_df)
+           
             
             
 
@@ -377,65 +377,7 @@ def compute_shap_plot(shap_values, shap_base_value, patient_df):
     except Exception as e:
         logger.error(f"Error generating SHAP plot: {str(e)}")
         return None  # Return None instead of breaking the pipeline
-
-def compute_shap_plot_percentage(shap_values, shap_base_value, patient_df):
-    """
-    Generates a SHAP Waterfall plot with percentage-based contributions instead of log-odds.
-    Converts SHAP values and base value to probability space.
-    """
-    try:
-        # **Ensure SHAP values are a NumPy array**
-        shap_values_array = np.array(shap_values, dtype=np.float64).reshape(-1)
-
-        # **Ensure SHAP base value is a scalar, not an array**
-        if isinstance(shap_base_value, (list, np.ndarray)):
-            shap_base_value = float(np.mean(shap_base_value))  # Convert to single float
-
-        # **Convert SHAP base value (log-odds) to probability (%)**
-        base_probability = (1 / (1 + np.exp(-shap_base_value))) * 100
-
-        # **Convert SHAP values from log-odds to probability (%) changes**
-        percentage_contributions = np.array([
-            ((1 / (1 + np.exp(-(shap_base_value + value)))) * 100 - base_probability)
-            for value in shap_values_array
-        ])
-
-        # **Ensure feature names match the length of SHAP values**
-        feature_names = list(patient_df.columns[:len(percentage_contributions)])
-
-        # **Convert data for SHAP plot**
-        percentage_contributions = np.array(percentage_contributions, dtype=np.float64)
-        base_probability = float(base_probability)  # Ensure it's a float
-        data_values = patient_df.iloc[0][feature_names].values.astype(float)  # Convert Pandas Series to array
-
-        # **Initialize Figure**
-        fig, ax = plt.subplots(figsize=(8, 6))
-
-        logger.info(f"SHAP Values Type: {type(percentage_contributions)}, Shape: {percentage_contributions.shape}")
-        logger.info(f"Base Probability: {base_probability}, Type: {type(base_probability)}")
-        logger.info(f"Feature Names: {feature_names}, Length: {len(feature_names)}")
-
-        # **Create SHAP Waterfall Plot (in Percentage)**
-        shap.waterfall_plot(shap.Explanation(
-            values=percentage_contributions,  # SHAP contributions in probability space
-            base_values=base_probability,  # SHAP base value in percentage
-            data=data_values,  # Feature values as a NumPy array
-            feature_names=feature_names
-        ))
-
-        # **Save the plot to a Bytes buffer**
-        buf = io.BytesIO()
-        plt.savefig(buf, format="png", bbox_inches="tight")
-        plt.close(fig)  # **Close the figure to free memory**
-        buf.seek(0)
-
-        # **Encode the image as a base64 string**
-        shap_plot_base64 = base64.b64encode(buf.read()).decode("utf-8")
-
-        return shap_plot_base64
-    except Exception as e:
-        logger.error(f"Error generating SHAP plot: {str(e)}")
-        return None  # Return None instead of breaking the pipeline        
+       
 
 
 # Middleware to log requests and prevent response stream errors
