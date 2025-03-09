@@ -21,6 +21,7 @@ import AppTheme from "../theme/AppTheme.tsx";
 import axios from "axios";
 import ColorModeIconDropdown from "../theme/ColorModeIconDropdown.tsx";
 import ChatComponent from "./ChatComponent.tsx";
+import TermsAndConditions from "./TermsAndConditions.tsx";
 
 const steps = ["Patient Details", "Calculate Diagnosis", "Review Results"];
 
@@ -123,6 +124,7 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
   };
 
   return (
+    <React.Fragment>
     <AppTheme {...props}>
       <CssBaseline enableColorScheme />
       <Box sx={{ position: "fixed", top: "1rem", right: "1rem" }}>
@@ -281,5 +283,7 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
         </Grid>
       </Grid>
     </AppTheme>
+    <TermsAndConditions />
+    </React.Fragment>
   );
 }
