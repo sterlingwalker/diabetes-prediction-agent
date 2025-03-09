@@ -183,27 +183,22 @@ if os.path.exists(scaler_path):
 else:
     logger.error("Scaler file not found. Ensure 'scaler.pkl' is available.")
     raise FileNotFoundError("Scaler file not found!")
-
 def predict_diabetes_risk(patient_data: dict, compute_shap: bool = True):
     try:
         # Convert patient data to DataFrame
         patient_df = pd.DataFrame([patient_data])
 
-        # **Retrieve trained feature order directly from the model**
-        if hasattr(tuned_rf_model, "feature_names_in_"):
-            trained_feature_order = tuned_rf_model.feature_names_in_.tolist()
-        else:
-            trained_feature_order = ['Glucose', 'BMI', 'Age', 'BloodPressure', 'Gender', 'Ethnicity']  # Default
-
+        # **Retrieve Trained Feature Order**
+        trained_feature_order = getattr(tuned_rf_model, "feature_names_in_", all_features)
         logger.info(f"Expected feature order from trained model: {trained_feature_order}")
 
-        # **Remove `Glucose_BMI_Ratio` if not in trained model features**
+        # **Ensure 'Glucose_BMI_Ratio' Exists If Trained With It**
         if "Glucose_BMI_Ratio" in trained_feature_order:
             patient_df["Glucose_BMI_Ratio"] = patient_df["Glucose"] / (patient_df["BMI"] + 1e-6)
         else:
             patient_df = patient_df.drop(columns=["Glucose_BMI_Ratio"], errors="ignore")
 
-        # **Ensure feature order and fill missing values**
+        # **Ensure All Expected Features Exist & Maintain Order**
         patient_df = patient_df.reindex(columns=trained_feature_order, fill_value=0.0)
 
         # **Select Model Based on Provided Features**
@@ -221,28 +216,26 @@ def predict_diabetes_risk(patient_data: dict, compute_shap: bool = True):
             apply_scaling = False  # RF was trained on raw (unscaled) data
             logger.info("Using Tuned Random Forest (≥5 Provided Features)")
 
-        # **Apply Scaling Only If Required**
+        # **Apply Scaling Only to Numerical Features When Needed**
+        numerical_features_for_scaling = [
+            feat for feat in trained_feature_order if feat in numerical_features
+        ]
+
         if apply_scaling:
-            numerical_features = set(trained_feature_order) & {'Glucose', 'BMI', 'Age', 'BloodPressure', 'Glucose_BMI_Ratio'}
-            patient_df[list(numerical_features)] = scaler.transform(patient_df[list(numerical_features)])
+            patient_df[numerical_features_for_scaling] = scaler.transform(patient_df[numerical_features_for_scaling])
+            logger.info("Applied scaling to numerical features")
         else:
             logger.info("Skipping feature scaling for Random Forest.")
 
-        # **Ensure categorical features remain integers**
+        # **Ensure Categorical Features Remain Integers**
         patient_df["Gender"] = patient_df["Gender"].astype(int)
         patient_df["Ethnicity"] = patient_df["Ethnicity"].astype(int)
 
-        # **Ensure correct feature order before prediction**
-        if hasattr(selected_model, "feature_names_in_"):
-            model_features = selected_model.feature_names_in_.tolist()
-        else:
-            model_features = trained_feature_order
-
-        patient_df = patient_df.reindex(columns=model_features, fill_value=0.0)
-
+        # **Ensure Feature Order Matches Training**
+        patient_df = patient_df.reindex(columns=trained_feature_order, fill_value=0.0)
         logger.info(f"Final input feature order for prediction: {patient_df.columns.tolist()}")
 
-        # **Prediction**
+        # **Make Prediction**
         risk = selected_model.predict(patient_df)[0]
         risk_probability = selected_model.predict_proba(patient_df)[:, 1][0] * 100
 
@@ -282,7 +275,8 @@ def predict_diabetes_risk(patient_data: dict, compute_shap: bool = True):
             "shapPlot": None,
             "error": str(e)
         }
-        
+
+
 from fastapi.encoders import jsonable_encoder
 
 @app.post("/predict")
