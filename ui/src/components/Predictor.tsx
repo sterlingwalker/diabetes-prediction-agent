@@ -42,7 +42,11 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
   });
 
   useEffect(() => {
-    setShowNextButton(activeStep !== 3 && (activeStep > 0 || Object.values(formData).every(value => value !== '')));
+    setShowNextButton(
+      activeStep !== 3 &&
+        (activeStep > 0 ||
+          Object.values(formData).every((value) => value !== "")),
+    );
   }, [activeStep, formData]);
 
   const handleNext = () => {
@@ -65,7 +69,7 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
     try {
       const response = await axios.post(
         "https://diabetes-prediction-agent.onrender.com/predict",
-        formData
+        formData,
       );
       if (response.data.error) {
         setError(response.data.error);
@@ -84,7 +88,7 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
     try {
       const response = await axios.post(
         "https://diabetes-prediction-agent.onrender.com/recommendations",
-        formData
+        formData,
       );
       setRecommendation(response.data);
       setError(null);
@@ -125,165 +129,166 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
 
   return (
     <React.Fragment>
-    <AppTheme {...props}>
-      <CssBaseline enableColorScheme />
-      <Box sx={{ position: "fixed", top: "1rem", right: "1rem" }}>
-        <ColorModeIconDropdown />
-      </Box>
-      <Grid
-        container
-        sx={{
-          height: { xs: "100%", sm: "100%" },
-          minHeight: { sm: "100vh" },
-          mt: { xs: 4, sm: 0 },
-        }}
-      >
+      <AppTheme {...props}>
+        <CssBaseline enableColorScheme />
+        <Box sx={{ position: "fixed", top: "1rem", right: "1rem" }}>
+          <ColorModeIconDropdown />
+        </Box>
         <Grid
-          size={{ xs: 12, sm: 5, lg: 4 }}
+          container
           sx={{
-            display: { xs: "none", md: "flex" },
-            flexDirection: "column",
-            backgroundColor: "background.paper",
-            borderRight: { sm: "none", md: "1px solid" },
-            borderColor: { sm: "none", md: "divider" },
-            alignItems: "start",
-            pt: 16,
-            px: 10,
-            gap: 4,
+            height: { xs: "100%", sm: "100%" },
+            minHeight: { sm: "100vh" },
+            mt: { xs: 4, sm: 0 },
           }}
         >
-          <Typography variant="h4">
-            <HealthAndSafetyIcon /> Diabetes Predictor
-          </Typography>
-          <Box
+          <Grid
+            size={{ xs: 12, sm: 5, lg: 4 }}
             sx={{
-              display: "flex",
+              display: { xs: "none", md: "flex" },
               flexDirection: "column",
-              flexGrow: 1,
-              width: "100%",
-              maxWidth: 500,
+              backgroundColor: "background.paper",
+              borderRight: { sm: "none", md: "1px solid" },
+              borderColor: { sm: "none", md: "divider" },
+              alignItems: "start",
+              pt: 16,
+              px: 10,
+              gap: 4,
             }}
           >
-            <Info />
-          </Box>
-        </Grid>
-        <Grid
-          size={{ sm: 12, md: 7, lg: 8 }}
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            maxWidth: "100%",
-            width: "100%",
-            backgroundColor: { xs: "transparent", sm: "background.default" },
-            alignItems: "start",
-            pt: { xs: 0, sm: 16 },
-            px: { xs: 2, sm: 10 },
-            gap: { xs: 4, md: 8 },
-          }}
-        >
-          {activeStep !== 3 && (
+            <Typography variant="h4">
+              <HealthAndSafetyIcon /> Diabetes Predictor
+            </Typography>
             <Box
               sx={{
                 display: "flex",
-                justifyContent: { sm: "space-between", md: "flex-end" },
-                alignItems: "center",
+                flexDirection: "column",
+                flexGrow: 1,
                 width: "100%",
-                maxWidth: { sm: "100%", md: 600 },
+                maxWidth: 500,
               }}
             >
-              <Box
-                sx={{
-                  display: { xs: "none", md: "flex" },
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  alignItems: "flex-end",
-                  flexGrow: 1,
-                }}
-              >
-                <Stepper
-                  id="desktop-stepper"
-                  activeStep={activeStep}
-                  sx={{ width: "100%", height: 40 }}
-                >
-                  {steps.map((label) => (
-                    <Step
-                      key={label}
-                      sx={{
-                        ":first-child": { pl: 0 },
-                        ":last-child": { pr: 0 },
-                      }}
-                    >
-                      <StepLabel>{label}</StepLabel>
-                    </Step>
-                  ))}
-                </Stepper>
-              </Box>
+              <Info />
             </Box>
-          )}
-          <Card sx={{ display: { xs: "flex", md: "none" }, width: "100%" }}>
-            <CardContent
-              sx={{
-                display: "flex",
-                width: "100%",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <InfoMobile />
-            </CardContent>
-          </Card>
-          <Box
+          </Grid>
+          <Grid
+            size={{ sm: 12, md: 7, lg: 8 }}
             sx={{
               display: "flex",
               flexDirection: "column",
-              flexGrow: 1,
+              maxWidth: "100%",
               width: "100%",
-              maxWidth: { sm: "100%" },
-              gap: { xs: 5, md: "none" },
+              backgroundColor: { xs: "transparent", sm: "background.default" },
+              alignItems: "start",
+              pt: { xs: 0, sm: 16 },
+              px: { xs: 2, sm: 10 },
+              gap: { xs: 4, md: 8 },
             }}
           >
-            <React.Fragment>
-              {getStepContent(activeStep)}
+            {activeStep !== 3 && (
               <Box
                 sx={{
                   display: "flex",
-                  flexDirection: { xs: "column-reverse", sm: "row" },
-                  alignItems: "end",
-                  flexGrow: 1,
-                  gap: 1,
-                  pb: { xs: 12, sm: 0 },
-                  mt: { xs: 2, sm: 0 },
-                  mb: "60px",
-                  justifyContent: activeStep !== 0 ? "space-between" : "flex-end",
+                  justifyContent: { sm: "space-between", md: "flex-end" },
+                  alignItems: "center",
+                  width: "100%",
+                  maxWidth: { sm: "100%", md: 600 },
                 }}
               >
-                {activeStep !== 0 && (
-                  <Button
-                    startIcon={<ChevronLeftRoundedIcon />}
-                    onClick={handleBack}
-                    variant="text"
+                <Box
+                  sx={{
+                    display: { xs: "none", md: "flex" },
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    alignItems: "flex-end",
+                    flexGrow: 1,
+                  }}
+                >
+                  <Stepper
+                    id="desktop-stepper"
+                    activeStep={activeStep}
+                    sx={{ width: "100%", height: 40 }}
                   >
-                    Previous
-                  </Button>
-                )}
-                {showNextButton && (
-                  <Button
-                    variant="contained"
-                    endIcon={<ChevronRightRoundedIcon />}
-                    onClick={handleNext}
-                  >
-                    {activeStep === steps.length - 1
-                      ? "Continue Conversation"
-                      : "Next"}
-                  </Button>
-                )}
+                    {steps.map((label) => (
+                      <Step
+                        key={label}
+                        sx={{
+                          ":first-child": { pl: 0 },
+                          ":last-child": { pr: 0 },
+                        }}
+                      >
+                        <StepLabel>{label}</StepLabel>
+                      </Step>
+                    ))}
+                  </Stepper>
+                </Box>
               </Box>
-            </React.Fragment>
-          </Box>
+            )}
+            <Card sx={{ display: { xs: "flex", md: "none" }, width: "100%" }}>
+              <CardContent
+                sx={{
+                  display: "flex",
+                  width: "100%",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <InfoMobile />
+              </CardContent>
+            </Card>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                flexGrow: 1,
+                width: "100%",
+                maxWidth: { sm: "100%" },
+                gap: { xs: 5, md: "none" },
+              }}
+            >
+              <React.Fragment>
+                {getStepContent(activeStep)}
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: { xs: "column-reverse", sm: "row" },
+                    alignItems: "end",
+                    flexGrow: 1,
+                    gap: 1,
+                    pb: { xs: 12, sm: 0 },
+                    mt: { xs: 2, sm: 0 },
+                    mb: "60px",
+                    justifyContent:
+                      activeStep !== 0 ? "space-between" : "flex-end",
+                  }}
+                >
+                  {activeStep !== 0 && (
+                    <Button
+                      startIcon={<ChevronLeftRoundedIcon />}
+                      onClick={handleBack}
+                      variant="text"
+                    >
+                      Previous
+                    </Button>
+                  )}
+                  {showNextButton && (
+                    <Button
+                      variant="contained"
+                      endIcon={<ChevronRightRoundedIcon />}
+                      onClick={handleNext}
+                    >
+                      {activeStep === steps.length - 1
+                        ? "Continue Conversation"
+                        : "Next"}
+                    </Button>
+                  )}
+                </Box>
+              </React.Fragment>
+            </Box>
+          </Grid>
         </Grid>
-      </Grid>
-    </AppTheme>
-    <TermsAndConditions />
+      </AppTheme>
+      <TermsAndConditions />
     </React.Fragment>
   );
 }

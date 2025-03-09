@@ -46,7 +46,9 @@ export default function PatientForm({ formData, setFormData }) {
         />
       </FormGrid>
       <FormGrid size={{ xs: 12, md: 6 }}>
-        <FormLabel required htmlFor="Glucose">Glucose</FormLabel>
+        <FormLabel required htmlFor="Glucose">
+          Glucose
+        </FormLabel>
         <OutlinedInput
           id="Glucose"
           name="Glucose"
@@ -59,7 +61,9 @@ export default function PatientForm({ formData, setFormData }) {
         />
       </FormGrid>
       <FormGrid size={{ xs: 12, md: 6 }}>
-        <FormLabel required htmlFor="bmi">Body mass index</FormLabel>
+        <FormLabel required htmlFor="bmi">
+          Body mass index
+        </FormLabel>
         <OutlinedInput
           id="BMI"
           name="BMI"
@@ -72,7 +76,9 @@ export default function PatientForm({ formData, setFormData }) {
         />
       </FormGrid>
       <FormGrid size={{ xs: 12, md: 6 }}>
-        <FormLabel required htmlFor="age">Age</FormLabel>
+        <FormLabel required htmlFor="age">
+          Age
+        </FormLabel>
         <OutlinedInput
           id="Age"
           name="Age"
@@ -85,7 +91,9 @@ export default function PatientForm({ formData, setFormData }) {
         />
       </FormGrid>
       <FormGrid size={{ xs: 12, md: 6 }}>
-        <FormLabel required htmlFor="BloodPressure">Blood Pressure</FormLabel>
+        <FormLabel required htmlFor="BloodPressure">
+          Blood Pressure
+        </FormLabel>
         <OutlinedInput
           id="BloodPressure"
           name="BloodPressure"
@@ -98,7 +106,9 @@ export default function PatientForm({ formData, setFormData }) {
         />
       </FormGrid>
       <FormGrid size={{ xs: 12, md: 6 }}>
-        <FormLabel required htmlFor="Gender">Gender</FormLabel>
+        <FormLabel required htmlFor="Gender">
+          Gender
+        </FormLabel>
         <Select
           id="Gender"
           name="Gender"
@@ -114,7 +124,9 @@ export default function PatientForm({ formData, setFormData }) {
         </Select>
       </FormGrid>
       <FormGrid size={{ xs: 12, md: 6 }}>
-        <FormLabel required htmlFor="Ethnicity">Ethnicity</FormLabel>
+        <FormLabel required htmlFor="Ethnicity">
+          Ethnicity
+        </FormLabel>
         <Select
           id="Ethnicity"
           name="Ethnicity"
