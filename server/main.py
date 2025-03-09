@@ -189,34 +189,48 @@ def predict_diabetes_risk(patient_data: dict, compute_shap: bool = True):
         # Convert patient data to DataFrame
         patient_df = pd.DataFrame([patient_data])
 
-        # Ensure feature order matches training data
-        trained_feature_order = ['Glucose', 'BMI', 'Age', 'BloodPressure', 'Gender', 'Ethnicity', 'Glucose_BMI_Ratio']
-        if "Glucose_BMI_Ratio" not in patient_df.columns:
-            patient_df["Glucose_BMI_Ratio"] = patient_df["Glucose"] / (patient_df["BMI"] + 1e-6)
+        # **Retrieve trained feature order directly from the model**
+        if hasattr(tuned_rf_model, "feature_names_in_"):
+            trained_feature_order = tuned_rf_model.feature_names_in_.tolist()
+        else:
+            trained_feature_order = ['Glucose', 'BMI', 'Age', 'BloodPressure', 'Gender', 'Ethnicity']  # Default
 
-        # Ensure all features exist
+        logger.info(f"Expected feature order from trained model: {trained_feature_order}")
+
+        # **Remove `Glucose_BMI_Ratio` if not in trained model features**
+        if "Glucose_BMI_Ratio" in trained_feature_order:
+            patient_df["Glucose_BMI_Ratio"] = patient_df["Glucose"] / (patient_df["BMI"] + 1e-6)
+        else:
+            patient_df = patient_df.drop(columns=["Glucose_BMI_Ratio"], errors="ignore")
+
+        # **Ensure feature order and fill missing values**
         patient_df = patient_df.reindex(columns=trained_feature_order, fill_value=0.0)
 
-        # **Apply Scaling (ONLY TO NUMERICAL FEATURES)**
-        numerical_features = ['Glucose', 'BMI', 'Age', 'BloodPressure', 'Glucose_BMI_Ratio']
-        patient_df[numerical_features] = scaler.transform(patient_df[numerical_features])
-
-        # **Ensure categorical features remain integers**
-        patient_df["Gender"] = patient_df["Gender"].astype(int)
-        patient_df["Ethnicity"] = patient_df["Ethnicity"].astype(int)
-
-        # **Model Selection**
+        # **Select Model Based on Provided Features**
         num_provided_features = patient_df.notna().sum(axis=1).iloc[0]
         logger.info(f"User-provided features count: {num_provided_features}")
 
         if num_provided_features <= 4:
             selected_model = lgbm_model
             model_used = "LightGBM"
+            apply_scaling = True  # LightGBM was trained on scaled data
             logger.info("Using LightGBM (≤4 Provided Features)")
         else:
             selected_model = tuned_rf_model
             model_used = "Tuned Random Forest"
+            apply_scaling = False  # RF was trained on raw (unscaled) data
             logger.info("Using Tuned Random Forest (≥5 Provided Features)")
+
+        # **Apply Scaling Only If Required**
+        if apply_scaling:
+            numerical_features = set(trained_feature_order) & {'Glucose', 'BMI', 'Age', 'BloodPressure', 'Glucose_BMI_Ratio'}
+            patient_df[list(numerical_features)] = scaler.transform(patient_df[list(numerical_features)])
+        else:
+            logger.info("Skipping feature scaling for Random Forest.")
+
+        # **Ensure categorical features remain integers**
+        patient_df["Gender"] = patient_df["Gender"].astype(int)
+        patient_df["Ethnicity"] = patient_df["Ethnicity"].astype(int)
 
         # **Ensure correct feature order before prediction**
         if hasattr(selected_model, "feature_names_in_"):
@@ -225,6 +239,8 @@ def predict_diabetes_risk(patient_data: dict, compute_shap: bool = True):
             model_features = trained_feature_order
 
         patient_df = patient_df.reindex(columns=model_features, fill_value=0.0)
+
+        logger.info(f"Final input feature order for prediction: {patient_df.columns.tolist()}")
 
         # **Prediction**
         risk = selected_model.predict(patient_df)[0]
