@@ -173,19 +173,42 @@ chat_prompt = PromptTemplate(
 )
 chat_chain = LLMChain(llm=llm, prompt=chat_prompt)
 
+import joblib
+
+# Load the scaler used during training
+scaler_path = "scaler.pkl"
+if os.path.exists(scaler_path):
+    scaler = joblib.load(scaler_path)
+    logger.info("Loaded saved StandardScaler for inference.")
+else:
+    logger.error("Scaler file not found. Ensure 'scaler.pkl' is available.")
+    raise FileNotFoundError("Scaler file not found!")
+
 def predict_diabetes_risk(patient_data: dict, compute_shap: bool = True):
     try:
         # Convert patient data to DataFrame
         patient_df = pd.DataFrame([patient_data])
 
-        # Ensure all expected features exist in DataFrame
-        patient_df = patient_df.reindex(columns=all_features, fill_value=np.nan)
+        # Ensure feature order matches training data
+        trained_feature_order = ['Glucose', 'BMI', 'Age', 'BloodPressure', 'Gender', 'Ethnicity', 'Glucose_BMI_Ratio']
+        if "Glucose_BMI_Ratio" not in patient_df.columns:
+            patient_df["Glucose_BMI_Ratio"] = patient_df["Glucose"] / (patient_df["BMI"] + 1e-6)
 
-        # **Count non-null user-provided values (Before Imputation)**
+        # Ensure all features exist
+        patient_df = patient_df.reindex(columns=trained_feature_order, fill_value=0.0)
+
+        # **Apply Scaling (ONLY TO NUMERICAL FEATURES)**
+        numerical_features = ['Glucose', 'BMI', 'Age', 'BloodPressure', 'Glucose_BMI_Ratio']
+        patient_df[numerical_features] = scaler.transform(patient_df[numerical_features])
+
+        # **Ensure categorical features remain integers**
+        patient_df["Gender"] = patient_df["Gender"].astype(int)
+        patient_df["Ethnicity"] = patient_df["Ethnicity"].astype(int)
+
+        # **Model Selection**
         num_provided_features = patient_df.notna().sum(axis=1).iloc[0]
         logger.info(f"User-provided features count: {num_provided_features}")
 
-        # **Model Selection (Based on User-Provided Data Only)**
         if num_provided_features <= 4:
             selected_model = lgbm_model
             model_used = "LightGBM"
@@ -195,27 +218,13 @@ def predict_diabetes_risk(patient_data: dict, compute_shap: bool = True):
             model_used = "Tuned Random Forest"
             logger.info("Using Tuned Random Forest (≥5 Provided Features)")
 
-        # **Handle Missing Values (AFTER Model Selection)**
-        for feature in all_features:
-            if patient_df[feature].isnull().all():  # If an entire column is missing
-                if feature in numerical_features:
-                    logger.info(f"Warning: {feature} is missing. Assigning default median: {default_medians[feature]}")
-                    patient_df[feature] = default_medians[feature]
-                elif feature in categorical_features:
-                    logger.info(f"Warning: {feature} is missing. Assigning default mode: {default_modes[feature]}")
-                    patient_df[feature] = default_modes[feature]
+        # **Ensure correct feature order before prediction**
+        if hasattr(selected_model, "feature_names_in_"):
+            model_features = selected_model.feature_names_in_.tolist()
+        else:
+            model_features = trained_feature_order
 
-        # **Perform Median Imputation for Missing Numerical Features**
-        num_imputer = SimpleImputer(strategy='median')
-        cat_imputer = SimpleImputer(strategy='most_frequent')
-
-        if patient_df[numerical_features].isnull().any().any():
-            patient_df[numerical_features] = num_imputer.fit_transform(patient_df[numerical_features])
-        if patient_df[categorical_features].isnull().any().any():
-            patient_df[categorical_features] = cat_imputer.fit_transform(patient_df[categorical_features])
-
-        # **Ensure feature order matches model training**
-        patient_df = patient_df[all_features]
+        patient_df = patient_df.reindex(columns=model_features, fill_value=0.0)
 
         # **Prediction**
         risk = selected_model.predict(patient_df)[0]
@@ -227,13 +236,10 @@ def predict_diabetes_risk(patient_data: dict, compute_shap: bool = True):
             "modelUsed": model_used
         }
 
-        # **Compute SHAP Values ONLY if requested (i.e., from /predict API)**
+        # **Compute SHAP Values ONLY if requested**
         shap_values, shap_base_value = compute_shap_values(selected_model, patient_df)
         if compute_shap:
             shap_plot_base64 = compute_shap_plot(list(shap_values.values()), shap_base_value, patient_df)
-           
-            
-            
 
             result.update({
                 "shapValues": shap_values,
@@ -241,7 +247,6 @@ def predict_diabetes_risk(patient_data: dict, compute_shap: bool = True):
                 "shapPlot": shap_plot_base64
             })
         else:
-            # Do not include SHAP plot in /recommendations response
             result.update({
                 "shapValues": shap_values,
                 "shapBaseValue": shap_base_value,
