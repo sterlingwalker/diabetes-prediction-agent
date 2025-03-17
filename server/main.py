@@ -52,8 +52,7 @@ app.add_middleware(
 
 
 class PatientData(BaseModel):
-    patient-name: str = "" 
-    Glucose: Union[float, str] = 0.0
+    PatientName: str = "" 
     Glucose: Union[float, str] = 0.0
     BloodPressure: Union[float, str] = 0.0
     BMI: Union[float, str] = 0.0
