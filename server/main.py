@@ -52,7 +52,7 @@ app.add_middleware(
 
 
 class PatientData(BaseModel):
-    patient_name: str = "" 
+    patient-name: str = "" 
     Glucose: Union[float, str] = 0.0
     Glucose: Union[float, str] = 0.0
     BloodPressure: Union[float, str] = 0.0
@@ -137,8 +137,7 @@ def get_guideline_evidence(patient_data, risk_result, category):
 class ChatRequest(BaseModel):
     history: List[Dict[str, str]]
     user_input: str
-    patient_name: str = ""  
-    patient_data: Dict[str, Union[str, float, int]] 
+    patient_data: Dict[str, Union[str, float]] 
     recommendations: Dict[str, str]
     predicted_risk: str
     risk_probability: str
