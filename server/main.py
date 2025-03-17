@@ -100,7 +100,36 @@ for category in faiss_categories:
     except Exception as e:
         logger.error(f" Failed to load FAISS index for {category}: {str(e)}")
 
+def convert_categorical_values(patient_data):
+    """
+    Converts categorical numerical values (Gender, Ethnicity) into human-readable strings.
+    This function should be used AFTER running `predict_diabetes_risk()`, where the categorical
+    variables are initially used as numerical inputs for ML models.
+    """
+    gender_map = {
+        0: "Female",
+        1: "Male"
+    }
+    
+    ethnicity_map = {
+        1: "Mexican American",
+        2: "Other Hispanic",
+        3: "Non-Hispanic White",
+        4: "Non-Hispanic Black",
+        6: "Non-Hispanic Asian",
+        7: "Other Race - Including Multi-Racial",
+        8: "American Indian"
+    }
 
+    # Convert Gender
+    if "Gender" in patient_data:
+        patient_data["Gender"] = gender_map.get(int(patient_data["Gender"]), "Unknown")
+
+    # Convert Ethnicity
+    if "Ethnicity" in patient_data:
+        patient_data["Ethnicity"] = ethnicity_map.get(int(patient_data["Ethnicity"]), "Unknown")
+
+    return patient_data  # Return updated dictionary
 
 def get_guideline_evidence(patient_data, risk_result, category):
     """
@@ -558,7 +587,10 @@ async def get_recommendations(patient: PatientData):
         risk_result = predict_diabetes_risk(patient_data, compute_shap=False)
         logger.info(f"Risk Prediction for {patient.PatientName}: {risk_result}")
 
-        expert_recommendations = await get_expert_recommendations(patient_data, risk_result)
+        # **Convert Categorical Variables to Strings AFTER Prediction**
+        cleaned_patient_data = convert_categorical_values(patient_data)
+
+        expert_recommendations = await get_expert_recommendations(cleaned_patient_data, risk_result)
 
         # Log FAISS retrieval issues explicitly
         if not expert_recommendations:
