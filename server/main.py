@@ -543,20 +543,26 @@ def get_final_recommendation(patient_data, expert_recommendations, risk_result):
 
     return final_recommendation
 
+
 @app.post("/recommendations")
 async def get_recommendations(patient: PatientData):
     try:
-        patient_data = {k: float(v) if str(v).strip() else np.nan for k, v in patient.model_dump().items()}
-        logger.info(f" Received patient data for recommendations: {patient_data}")
+        # Exclude PatientName from numerical conversion
+        patient_data = {
+            k: float(v) if k != "PatientName" and str(v).strip() else np.nan 
+            for k, v in patient.model_dump().items()
+        }
+
+        logger.info(f"Received recommendation request for patient: {patient.PatientName}")
 
         risk_result = predict_diabetes_risk(patient_data, compute_shap=False)
-        logger.info(f"Risk Prediction: {risk_result}")
+        logger.info(f"Risk Prediction for {patient.PatientName}: {risk_result}")
 
         expert_recommendations = await get_expert_recommendations(patient_data, risk_result)
 
         # Log FAISS retrieval issues explicitly
         if not expert_recommendations:
-            logger.warning(" Expert recommendations returned None or empty.")
+            logger.warning("Expert recommendations returned None or empty.")
             expert_recommendations = {
                 "Endocrinologist": "No recommendations available.",
                 "Dietitian": "No recommendations available.",
@@ -564,7 +570,6 @@ async def get_recommendations(patient: PatientData):
             }
 
         final_recommendation = get_final_recommendation(patient_data, expert_recommendations, risk_result)
-        
 
         return {
             "endocrinologistRecommendation": expert_recommendations.get("Endocrinologist", "No data"),
@@ -574,24 +579,28 @@ async def get_recommendations(patient: PatientData):
         }
 
     except Exception as e:
-        logger.error(f"Error processing recommendations: {str(e)}")
+        logger.error(f"Error processing recommendations for {patient.PatientName}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+        
+
 
 @app.post("/chat")
 async def chat(chat_request: ChatRequest):
     try:
-        # Validate and Clean `patient_data`
+        # Exclude PatientName from numerical conversion
         cleaned_patient_data = {}
         for key, value in chat_request.patient_data.items():
             try:
-                cleaned_value = str(value).strip().replace("`", "").replace("'", "")
-                cleaned_patient_data[key] = float(cleaned_value) if cleaned_value else 0.0
+                if key == "PatientName":
+                    cleaned_patient_data[key] = str(value).strip()
+                else:
+                    cleaned_value = str(value).strip().replace("`", "").replace("'", "")
+                    cleaned_patient_data[key] = float(cleaned_value) if cleaned_value else 0.0
             except ValueError:
                 logger.error(f"Invalid patient data input for {key}: {value}")
                 raise HTTPException(status_code=400, detail=f"Invalid input for {key}: {value}")
 
-
-        #  Ensure `recommendations` are strings
+        # Ensure `recommendations` are strings
         cleaned_recommendations = {k: str(v) if isinstance(v, str) else "" for k, v in chat_request.recommendations.items()}
 
         # Validate `history`
@@ -609,37 +618,45 @@ async def chat(chat_request: ChatRequest):
         except ValueError:
             logger.error(f"Invalid risk probability: {chat_request.risk_probability}")
             raise HTTPException(status_code=400, detail=f"Invalid risk probability: {chat_request.risk_probability}")
-       # Format history, patient data, and recommendations for LLM
+
+        # Enforcing System Prompt to Restrict Responses to Diabetes
+        system_prompt = (
+            "SYSTEM: You are a medical AI assistant strictly focused on Diabetes. "
+            "Do not answer questions unrelated to Diabetes, even if asked. "
+            "If a question is outside this scope, politely refuse to answer.\n\n"
+        )
+
+        # Format history, patient data, and recommendations for LLM
         formatted_history = "\n".join(
             [f"**{msg['role'].capitalize()}**: {msg['content']}" for msg in validated_history]
         )
         formatted_patient_data = "\n".join([f"- {key}: {value}" for key, value in cleaned_patient_data.items()])
         formatted_recommendations = "\n".join([f"- {key}: {value}" for key, value in cleaned_recommendations.items()])
 
-        # Generate response from LLM
+        # Pass System Prompt as Context in LLM Response Generation
         response = chat_chain.run(
-            history=formatted_history,
+            history=f"{system_prompt}\n{formatted_history}",
             user_input=chat_request.user_input,
             patient_data=formatted_patient_data,
             recommendations=formatted_recommendations,
             predicted_risk=chat_request.predicted_risk,
-            risk_probability=risk_probability  #  Ensuring it's a valid number as a string
+            risk_probability=risk_probability
         )
 
-        #  Append assistant's response to chat history
+        #  Append AI Response to Chat History
         chat_request.history.append({"role": "assistant", "content": response})
-          
+
         return {
             "response": response,
             "updated_history": chat_request.history
         }
-      
+
     except HTTPException as http_error:
         raise http_error
     except Exception as e:
         logger.error(f"Error processing chat request: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-        
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))  # Ensure compatibility with Render
     uvicorn.run(app, host="0.0.0.0", port=port, timeout_keep_alive=300)
