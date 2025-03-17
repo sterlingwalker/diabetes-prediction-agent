@@ -278,37 +278,27 @@ def predict_diabetes_risk(patient_data: dict, compute_shap: bool = True):
 
 from fastapi.encoders import jsonable_encoder
 
+
 @app.post("/predict")
 async def predict(patient: PatientData):
     try:
-        patient_data = {}
-        for key, value in patient.model_dump().items():
-            try:
-                cleaned_value = str(value).strip().replace("`", "").replace("'", "")
+        # Exclude PatientName from numeric conversion
+        patient_data = {
+            k: float(v) if k != "PatientName" and str(v).strip() else np.nan 
+            for k, v in patient.model_dump().items()
+        }
 
-                # Handle empty strings by setting them to NaN (Not 0.0)
-                if cleaned_value == "":
-                    patient_data[key] = np.nan  # Keeps missing values as NaN
-                else:
-                    patient_data[key] = float(cleaned_value)
+        logger.info(f"Received prediction request for patient: {patient.PatientName}")
 
-            except ValueError:
-                logger.error(f"Invalid input for {key}: {value}")
-                raise HTTPException(status_code=400, detail=f"Invalid input for {key}: {value}")
-
-        logger.info(f"Received patient data with defaults: {patient_data}")
-
-        # **SHAP Computation Enabled (Default)**
         result = predict_diabetes_risk(patient_data, compute_shap=True)
-        logger.info(f"Prediction result: {result}")
+        logger.info(f"Prediction result for {patient.PatientName}: {result}")
 
-        return jsonable_encoder(result)  # Ensure JSON-serializable output
+        return result
 
     except Exception as e:
-        logger.error(f"Error processing request: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
+        logger.error(f"Error processing request for {patient.PatientName}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))  
+        
 def compute_shap_values(model, patient_df):
     try:
         # Extract model from pipeline if needed
@@ -504,7 +494,7 @@ async def get_expert_recommendations(patient_data, risk_result):
         )
     }
 
-    llm = ChatOpenAI(model_name="gpt-4", temperature=0.4)
+    llm = ChatOpenAI(model_name="gpt-4", temperature=0.3)
 
     async def fetch_recommendation(expert, prompt):
         try:
