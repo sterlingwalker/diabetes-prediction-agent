@@ -36,8 +36,8 @@ export default function PatientForm({ formData, setFormData }) {
       <FormGrid size={{ xs: 12 }}>
         <FormLabel htmlFor="patient-name">Patient name</FormLabel>
         <OutlinedInput
-          id="patient-name"
-          name="patient-name"
+          id="PatientName"
+          name="PatientName"
           type="text"
           placeholder="Sarah Smith"
           size="small"
