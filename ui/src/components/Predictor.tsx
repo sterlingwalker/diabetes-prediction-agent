@@ -21,9 +21,14 @@ import AppTheme from "../theme/AppTheme.tsx";
 import axios from "axios";
 import ColorModeIconDropdown from "../theme/ColorModeIconDropdown.tsx";
 import ChatComponent from "./ChatComponent.tsx";
-import TermsAndConditions from "./TermsAndConditions.tsx";
+import Disclaimer from "./Disclaimer.tsx";
 
-const steps = ["Patient Details", "Calculate Diagnosis", "Review Results"];
+const steps = [
+  "Patient Details",
+  "Calculate Diagnosis",
+  "Review Results",
+  "Chat with Specialist",
+];
 
 export default function Predictor(props: { disableCustomTheme?: boolean }) {
   const [activeStep, setActiveStep] = useState(0);
@@ -31,6 +36,7 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [recommendation, setRecommendation] = useState<any>(null);
   const [showNextButton, setShowNextButton] = useState(false);
+  const [modalOpen, setModalOpen] = useState(true);
 
   const [formData, setFormData] = useState({
     Glucose: "",
@@ -42,12 +48,16 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
   });
 
   useEffect(() => {
-    setShowNextButton(
-      activeStep !== 3 &&
-        (activeStep > 0 ||
-          Object.values(formData).every((value) => value !== "")),
-    );
-  }, [activeStep, formData]);
+    if (activeStep === 1) {
+      setShowNextButton(recommendation !== null);
+    } else {
+      setShowNextButton(
+        activeStep !== 3 &&
+          (activeStep > 0 ||
+            Object.values(formData).every((value) => value !== "")),
+      );
+    }
+  }, [activeStep, formData, recommendation]);
 
   const handleNext = () => {
     if (activeStep === 0) {
@@ -169,6 +179,12 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
               }}
             >
               <Info />
+              <Button
+                sx={{ width: "100%", mt: "auto", mb: "16px" }}
+                onClick={() => setModalOpen(true)}
+              >
+                Disclaimer
+              </Button>
             </Box>
           </Grid>
           <Grid
@@ -185,45 +201,44 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
               gap: { xs: 4, md: 8 },
             }}
           >
-            {activeStep !== 3 && (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: { sm: "space-between", md: "flex-end" },
+                alignItems: "center",
+                width: "100%",
+                maxWidth: { sm: "100%", md: 600 },
+                margin: "0 auto",
+              }}
+            >
               <Box
                 sx={{
-                  display: "flex",
-                  justifyContent: { sm: "space-between", md: "flex-end" },
-                  alignItems: "center",
-                  width: "100%",
-                  maxWidth: { sm: "100%", md: 600 },
+                  display: { xs: "none", md: "flex" },
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  alignItems: "flex-end",
+                  flexGrow: 1,
                 }}
               >
-                <Box
-                  sx={{
-                    display: { xs: "none", md: "flex" },
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                    alignItems: "flex-end",
-                    flexGrow: 1,
-                  }}
+                <Stepper
+                  id="desktop-stepper"
+                  activeStep={activeStep}
+                  sx={{ width: "100%", height: 40 }}
                 >
-                  <Stepper
-                    id="desktop-stepper"
-                    activeStep={activeStep}
-                    sx={{ width: "100%", height: 40 }}
-                  >
-                    {steps.map((label) => (
-                      <Step
-                        key={label}
-                        sx={{
-                          ":first-child": { pl: 0 },
-                          ":last-child": { pr: 0 },
-                        }}
-                      >
-                        <StepLabel>{label}</StepLabel>
-                      </Step>
-                    ))}
-                  </Stepper>
-                </Box>
+                  {steps.map((label) => (
+                    <Step
+                      key={label}
+                      sx={{
+                        ":first-child": { pl: 0 },
+                        ":last-child": { pr: 0 },
+                      }}
+                    >
+                      <StepLabel>{label}</StepLabel>
+                    </Step>
+                  ))}
+                </Stepper>
               </Box>
-            )}
+            </Box>
             <Card sx={{ display: { xs: "flex", md: "none" }, width: "100%" }}>
               <CardContent
                 sx={{
@@ -277,9 +292,7 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
                       endIcon={<ChevronRightRoundedIcon />}
                       onClick={handleNext}
                     >
-                      {activeStep === steps.length - 1
-                        ? "Continue Conversation"
-                        : "Next"}
+                      {activeStep === 2 ? "Chat with a Specialist" : "Next"}
                     </Button>
                   )}
                 </Box>
@@ -288,7 +301,7 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
           </Grid>
         </Grid>
       </AppTheme>
-      <TermsAndConditions />
+      <Disclaimer modalOpen={modalOpen} setModalOpen={setModalOpen} />
     </React.Fragment>
   );
 }

@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import ReactMarkdown from "react-markdown";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 
 const ChatContainer = styled.div`
   max-width: 900px;
+  min-width: 700px;
   background: #f9f9f9;
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
   height: 500px;
+  margin: 0 auto;
 `;
 
 const MessagesContainer = styled.div`
@@ -34,6 +36,34 @@ const MessageBubble = styled.div`
   color: ${(props) => (props.isUser ? "#fff" : "#000")};
   p {
     margin: 0;
+  }
+`;
+
+const blink = keyframes`
+  0% {
+    opacity: 0.2;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.2;
+  }
+`;
+
+const Dot = styled.span`
+  animation: ${blink} 1.4s infinite both;
+  margin-right: 2px;
+  font-size: 1.75rem;
+  line-height: 0.75;
+  &:nth-child(1) {
+    animation-delay: 0s;
+  }
+  &:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+  &:nth-child(3) {
+    animation-delay: 0.4s;
   }
 `;
 
@@ -90,14 +120,18 @@ function ChatComponent({
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [history]);
+  }, [history, loading]);
 
   const handleSend = async () => {
     if (!userInput.trim()) return;
 
     const updatedHistory = [...history, { role: "user", content: userInput }];
     setHistory(updatedHistory);
-    setLoading(true);
+
+    //Delay the loading indicator for a more realistic feel
+    setTimeout(() => {
+      setLoading(true);
+    }, 500);
 
     try {
       const response = await axios.post(
@@ -135,6 +169,13 @@ function ChatComponent({
             <ReactMarkdown>{msg.content}</ReactMarkdown>
           </MessageBubble>
         ))}
+        {loading && (
+          <MessageBubble isUser={false} key="typing-indicator">
+            <Dot>•</Dot>
+            <Dot>•</Dot>
+            <Dot>•</Dot>
+          </MessageBubble>
+        )}
         <div ref={messagesEndRef} />
       </MessagesContainer>
       <InputContainer>

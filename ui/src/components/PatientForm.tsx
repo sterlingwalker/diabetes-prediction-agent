@@ -32,7 +32,7 @@ export default function PatientForm({ formData, setFormData }) {
   };
 
   return (
-    <Grid container spacing={3} sx={{ maxWidth: "600px" }}>
+    <Grid container spacing={3} sx={{ maxWidth: "600px", margin: "0 auto" }}>
       <FormGrid size={{ xs: 12 }}>
         <FormLabel htmlFor="patient-name">Patient name</FormLabel>
         <OutlinedInput
@@ -41,7 +41,7 @@ export default function PatientForm({ formData, setFormData }) {
           type="text"
           placeholder="Sarah Smith"
           size="small"
-          value={formData["patient-name"]}
+          value={formData.PatientName}
           onChange={handleChange}
         />
       </FormGrid>

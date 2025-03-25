@@ -5,7 +5,7 @@ import Typography from "@mui/material/Typography";
 import { styled } from "@mui/material/styles";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CircularProgress from "@mui/material/CircularProgress";
-import ShapBarChart from "./ShapBarChart.tsx";
+import ShapWaterfallChart from "./ShapWaterfallChart.tsx";
 
 const CalculationProgressContainer = styled("div")(({ theme }) => ({
   display: "flex",
@@ -131,7 +131,9 @@ export default function CalculationProgress({
             <Typography variant="subtitle2">Recommendation Complete</Typography>
           </Box>
         )}
-        {prediction?.shapValues && <ShapBarChart shapResponse={prediction} />}
+        {prediction?.shapValues && (
+          <ShapWaterfallChart shapResponse={prediction} />
+        )}
       </CalculationProgressContainer>
     </Box>
   );

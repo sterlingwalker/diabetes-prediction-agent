@@ -1,7 +1,7 @@
 import React from "react";
 
 const ShapWaterfallChart = ({ shapResponse }) => {
-  const { shapBaseValue, shapPlot } = shapResponse;
+  const { shapPlot } = shapResponse;
 
   return (
     <div style={{ width: "100%", margin: "0 auto" }}>

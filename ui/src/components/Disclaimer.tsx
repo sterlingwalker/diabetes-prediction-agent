@@ -1,8 +1,5 @@
 import Button from "@mui/material/Button";
-import IconButton from "@mui/material/IconButton";
-import Snackbar, { SnackbarCloseReason } from "@mui/material/Snackbar";
 import React from "react";
-import CloseIcon from "@mui/icons-material/Close";
 import Modal from "@mui/material/Modal";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -14,62 +11,30 @@ const style = {
   transform: "translate(-50%, -50%)",
   width: "75%",
   bgcolor: "background.paper",
+  borderRadius: 2,
   boxShadow: 24,
   p: 4,
+  outline: "none",
+  "&:focus": {
+    outline: "none",
+  },
 };
 
-export default function TermsAndConditions() {
-  const [open, setOpen] = React.useState(true);
-  const [modalOpen, setModalOpen] = React.useState(false);
-
-  const handleClose = (
-    event: React.SyntheticEvent | Event,
-    reason?: SnackbarCloseReason,
-  ) => {
-    if (reason === "clickaway") {
-      return;
-    }
-
-    setOpen(false);
-  };
-
-  const handleOpenTerms = () => {
-    setOpen(false);
-    setModalOpen(true);
-  };
-
+export default function Disclaimer({ modalOpen, setModalOpen }) {
   const handleModalClose = () => {
     setModalOpen(false);
   };
 
-  const action = (
-    <React.Fragment>
-      <Button color="primary" size="small" onClick={handleOpenTerms}>
-        TERMS
-      </Button>
-      <IconButton
-        size="small"
-        aria-label="close"
-        color="inherit"
-        onClick={handleClose}
-      >
-        <CloseIcon fontSize="small" />
-      </IconButton>
-    </React.Fragment>
-  );
-
   return (
     <div>
-      <Snackbar
-        open={open}
-        autoHideDuration={6000}
-        onClose={handleClose}
-        message="By using this application, you agree to the terms and conditions."
-        action={action}
-      />
       <Modal open={modalOpen} onClose={handleModalClose}>
         <Box sx={style}>
-          <Typography id="modal-modal-title" variant="h6" component="h2">
+          <Typography
+            id="modal-modal-title"
+            variant="h6"
+            component="h2"
+            align="center"
+          >
             Disclaimer
           </Typography>
           <Typography id="modal-modal-description" sx={{ mt: 2 }}>
@@ -97,6 +62,16 @@ export default function TermsAndConditions() {
             experts. By using this application, you acknowledge and accept the
             limitations and responsibilities outlined above.
           </Typography>
+          <Box sx={{ display: "flex", justifyContent: "center" }}>
+            <Button
+              variant="contained"
+              color="primary"
+              sx={{ mt: 4 }}
+              onClick={handleModalClose}
+            >
+              I Acknowledge
+            </Button>
+          </Box>
         </Box>
       </Modal>
     </div>

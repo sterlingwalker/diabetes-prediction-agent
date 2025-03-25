@@ -25,6 +25,11 @@ const services = [
     desc: "Provide a custom fitness plan to mitigate risk",
     additional: "",
   },
+  {
+    name: "Interactive Chat",
+    desc: "Discuss your results with a specialist",
+    additional: "",
+  },
 ];
 
 export default function Info() {
