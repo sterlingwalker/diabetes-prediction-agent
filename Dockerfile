@@ -4,15 +4,15 @@ FROM python:3.9-slim
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy the requirements file from the backend directory into the container at /app
-COPY ./backend/requirements.txt /app/requirements.txt
+# Copy the requirements file from the server directory into the container at /app
+COPY ./server/requirements.txt /app/requirements.txt
 
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the entire contents of the 'backend' directory into the container at /app
-# This will include main.py, model files, and FAISS index folders from your backend folder.
-COPY ./backend/ /app/
+# Copy the entire contents of the 'server' directory into the container at /app
+# This will include main.py, model files, and FAISS index folders from your server folder.
+COPY ./server/ /app/
 
 # Make port 8080 available to the world outside this container
 EXPOSE 8080
