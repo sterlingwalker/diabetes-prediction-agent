@@ -690,5 +690,5 @@ async def chat(chat_request: ChatRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))  # Ensure compatibility with Render
+    port = int(os.environ.get("PORT", 8080))  # Ensure compatibility with Render
     uvicorn.run(app, host="0.0.0.0", port=port, timeout_keep_alive=300)
