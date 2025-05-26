@@ -1,6 +1,12 @@
 # Use an official Python runtime as a parent image
 FROM python:3.9-slim
 
+# Install system dependencies
+# libgomp1 is required for LightGBM (provides libgomp.so.1)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libgomp1 && \
+    rm -rf /var/lib/apt/lists/* # Clean up apt cache
+
 # Set the working directory in the container
 WORKDIR /app
 
@@ -11,7 +17,6 @@ COPY ./server/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the entire contents of the 'server' directory into the container at /app
-# This will include main.py, model files, and FAISS index folders from your server folder.
 COPY ./server/ /app/
 
 # Make port 8080 available to the world outside this container
