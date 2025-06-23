@@ -31,3 +31,19 @@ python3 train.py
 ```sh
 python3 main.py
 ```
+
+### MCP Endpoint
+
+The server exposes `/mcp` for Model Control Protocol operations. Example:
+
+```sh
+curl -X POST http://localhost:8080/mcp -H "Content-Type: application/json" \
+    -d '{"action": "list_models"}'
+```
+
+Supported actions:
+
+- `list_models` – return available model names.
+- `switch_model` – set the active model using `{"model": "lightgbm"}` or `{"model": "random_forest"}`.
+- `current_model` – display the currently active model.
+- `metadata` – return both available models and current selection.

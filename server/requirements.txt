@@ -11,3 +11,4 @@ python-dotenv
 lightgbm
 matplotlib
 faiss-cpu
+pytest

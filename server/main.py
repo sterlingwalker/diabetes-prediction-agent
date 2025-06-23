@@ -25,6 +25,7 @@ from imblearn.pipeline import Pipeline
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import FAISS
 import asyncio
+from mcp import MCPRequest, MCPResponse, handle_mcp_action, current_model_override
 
 # Load environment variables
 load_dotenv()
@@ -229,20 +230,31 @@ def predict_diabetes_risk(patient_data: dict, compute_shap: bool = True):
         # **Ensure All Expected Features Exist & Maintain Order**
         patient_df = patient_df.reindex(columns=trained_feature_order, fill_value=0.0)
 
-        # **Select Model Based on Provided Features**
+        # **Select Model Based on Provided Features or MCP override**
         num_provided_features = patient_df.notna().sum(axis=1).iloc[0]
         logger.info(f"User-provided features count: {num_provided_features}")
 
-        if num_provided_features <= 4:
+        if current_model_override == "lightgbm":
             selected_model = lgbm_model
             model_used = "LightGBM"
-            apply_scaling = True  # LightGBM was trained on scaled data
-            logger.info("Using LightGBM (≤4 Provided Features)")
-        else:
+            apply_scaling = True
+            logger.info("Using LightGBM (MCP override)")
+        elif current_model_override == "random_forest":
             selected_model = tuned_rf_model
             model_used = "Tuned Random Forest"
-            apply_scaling = False  # RF was trained on raw (unscaled) data
-            logger.info("Using Tuned Random Forest (≥5 Provided Features)")
+            apply_scaling = False
+            logger.info("Using Tuned Random Forest (MCP override)")
+        else:
+            if num_provided_features <= 4:
+                selected_model = lgbm_model
+                model_used = "LightGBM"
+                apply_scaling = True  # LightGBM was trained on scaled data
+                logger.info("Using LightGBM (≤4 Provided Features)")
+            else:
+                selected_model = tuned_rf_model
+                model_used = "Tuned Random Forest"
+                apply_scaling = False  # RF was trained on raw (unscaled) data
+                logger.info("Using Tuned Random Forest (≥5 Provided Features)")
 
         # **Apply Scaling Only to Numerical Features When Needed**
         numerical_features_for_scaling = [
@@ -613,7 +625,15 @@ async def get_recommendations(patient: PatientData):
     except Exception as e:
         logger.error(f"Error processing recommendations for {patient.PatientName}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-        
+
+
+@app.post("/mcp", response_model=MCPResponse)
+async def mcp_endpoint(request: MCPRequest):
+    try:
+        data = handle_mcp_action(request.action, request.parameters)
+        return MCPResponse(status="ok", data=data)
+    except Exception as e:
+        return MCPResponse(status="error", error=str(e))
 
 
 @app.post("/chat")
