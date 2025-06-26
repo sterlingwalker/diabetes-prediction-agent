@@ -47,3 +47,6 @@ Supported actions:
 - `switch_model` – set the active model using `{"model": "lightgbm"}` or `{"model": "random_forest"}`.
 - `current_model` – display the currently active model.
 - `metadata` – return both available models and current selection.
+- `predict` – run the prediction logic with a patient payload (equivalent to the `/predict` endpoint).
+- `recommendations` – generate recommendations for a patient (equivalent to the `/recommendations` endpoint).
+- `chat` – invoke the chat agent using a `ChatRequest` payload.

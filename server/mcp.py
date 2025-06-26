@@ -1,4 +1,4 @@
-from typing import Optional, Dict, List, Union
+from typing import Optional, Dict, List, Union, Any
 from pydantic import BaseModel
 
 # Available models that can be controlled via MCP
@@ -12,7 +12,8 @@ current_model_override: Optional[str] = None
 
 class MCPRequest(BaseModel):
     action: str
-    parameters: Optional[Dict[str, str]] = None
+    # Allow any parameter types for actions that require complex payloads
+    parameters: Optional[Dict[str, Any]] = None
 
 # --- New/Modified Response Data Models ---
 
@@ -33,8 +34,8 @@ class MetadataResponseData(BaseModel):
 class MCPResponse(BaseModel):
     status: str
     # 'data' can now be any of the specific Pydantic models defined above,
-    # or a generic dictionary of string to string for other potential cases.
-    data: Optional[Union[ModelListResponseData, CurrentModelResponseData, MetadataResponseData, Dict[str, str]]] = None
+    # or a generic dictionary for other potential cases.
+    data: Optional[Union[ModelListResponseData, CurrentModelResponseData, MetadataResponseData, Dict[str, Any]]] = None
     error: Optional[str] = None
 
 # --- Original helper functions (no changes needed here) ---
@@ -62,7 +63,7 @@ def get_metadata() -> Dict[str, Optional[str]]:
 
 # --- Modified handle_mcp_action to return Pydantic data models directly ---
 # The return type hint is updated to reflect the Pydantic data models being returned.
-def handle_mcp_action(action: str, parameters: Optional[Dict[str, str]] = None) -> Union[ModelListResponseData, CurrentModelResponseData, MetadataResponseData, Dict[str, Optional[str]]]:
+def handle_mcp_action(action: str, parameters: Optional[Dict[str, Any]] = None) -> Union[ModelListResponseData, CurrentModelResponseData, MetadataResponseData, Dict[str, Any]]:
     """
     Handles different MCP actions and returns the appropriate data for the response.
     Returns Pydantic model instances for clarity and validation.
@@ -84,6 +85,46 @@ def handle_mcp_action(action: str, parameters: Optional[Dict[str, str]] = None) 
             available_models=metadata["available_models"],
             current_model=metadata["current_model"]
         )
+    if action == "predict":
+        if not parameters:
+            raise ValueError("patient parameters required for predict")
+        from . import main
+        import numpy as np
+        import asyncio
+        patient = main.PatientData(**parameters)
+        patient_dict = {
+            k: float(v) if k != "PatientName" and str(v).strip() else np.nan
+            for k, v in patient.model_dump().items()
+        }
+        return main.predict_diabetes_risk(patient_dict, compute_shap=True)
+    if action == "recommendations":
+        if not parameters:
+            raise ValueError("patient parameters required for recommendations")
+        from . import main
+        import numpy as np
+        import asyncio
+        patient = main.PatientData(**parameters)
+        patient_dict = {
+            k: float(v) if k != "PatientName" and str(v).strip() else np.nan
+            for k, v in patient.model_dump().items()
+        }
+        risk_result = main.predict_diabetes_risk(patient_dict, compute_shap=False)
+        cleaned_patient = main.convert_categorical_values(patient_dict.copy())
+        expert = asyncio.run(main.get_expert_recommendations(cleaned_patient, risk_result))
+        final_rec = main.get_final_recommendation(patient_dict, expert, risk_result)
+        return {
+            "endocrinologistRecommendation": expert.get("Endocrinologist", "No data"),
+            "dietitianRecommendation": expert.get("Dietitian", "No data"),
+            "fitnessRecommendation": expert.get("Fitness Expert", "No data"),
+            "finalRecommendation": final_rec
+        }
+    if action == "chat":
+        if not parameters:
+            raise ValueError("chat parameters required")
+        from . import main
+        import asyncio
+        chat_request = main.ChatRequest(**parameters)
+        return asyncio.run(main.chat(chat_request))
     raise ValueError("Unsupported MCP action")
 
 # --- Example of how this would be used in a web framework endpoint (e.g., FastAPI) ---
