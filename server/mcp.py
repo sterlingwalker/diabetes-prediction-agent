@@ -1,4 +1,4 @@
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Union
 from pydantic import BaseModel
 
 # Available models that can be controlled via MCP
@@ -14,10 +14,30 @@ class MCPRequest(BaseModel):
     action: str
     parameters: Optional[Dict[str, str]] = None
 
+# --- New/Modified Response Data Models ---
+
+class ModelListResponseData(BaseModel):
+    """Data model for 'list_models' action."""
+    models: List[str] # This correctly expects a list of strings
+
+class CurrentModelResponseData(BaseModel):
+    """Data model for 'switch_model' and 'current_model' actions."""
+    current_model: Optional[str]
+
+class MetadataResponseData(BaseModel):
+    """Data model for 'metadata' action."""
+    available_models: Dict[str, str]
+    current_model: Optional[str]
+
+# Main Response Model - data field now uses Union to accept different data structures
 class MCPResponse(BaseModel):
     status: str
-    data: Optional[Dict[str, str]] = None
+    # 'data' can now be any of the specific Pydantic models defined above,
+    # or a generic dictionary of string to string for other potential cases.
+    data: Optional[Union[ModelListResponseData, CurrentModelResponseData, MetadataResponseData, Dict[str, str]]] = None
     error: Optional[str] = None
+
+# --- Original helper functions (no changes needed here) ---
 
 def list_models() -> List[str]:
     return list(AVAILABLE_MODELS.values())
@@ -40,16 +60,85 @@ def get_metadata() -> Dict[str, Optional[str]]:
         "current_model": get_current_model(),
     }
 
-def handle_mcp_action(action: str, parameters: Optional[Dict[str, str]] = None) -> Dict[str, Optional[str]]:
+# --- Modified handle_mcp_action to return Pydantic data models directly ---
+# The return type hint is updated to reflect the Pydantic data models being returned.
+def handle_mcp_action(action: str, parameters: Optional[Dict[str, str]] = None) -> Union[ModelListResponseData, CurrentModelResponseData, MetadataResponseData, Dict[str, Optional[str]]]:
+    """
+    Handles different MCP actions and returns the appropriate data for the response.
+    Returns Pydantic model instances for clarity and validation.
+    """
     if action == "list_models":
-        return {"models": list_models()}
+        return ModelListResponseData(models=list_models())
     if action == "switch_model":
         if not parameters or "model" not in parameters:
             raise ValueError("'model' parameter required")
         model_name = switch_model(parameters["model"])
-        return {"current_model": model_name}
+        return CurrentModelResponseData(current_model=model_name)
     if action == "current_model":
-        return {"current_model": get_current_model()}
+        return CurrentModelResponseData(current_model=get_current_model())
     if action == "metadata":
-        return get_metadata()
+        # get_metadata returns a Dict[str, Optional[str]]
+        # We need to explicitly pass it to the MetadataResponseData Pydantic model
+        metadata = get_metadata()
+        return MetadataResponseData(
+            available_models=metadata["available_models"],
+            current_model=metadata["current_model"]
+        )
     raise ValueError("Unsupported MCP action")
+
+# --- Example of how this would be used in a web framework endpoint (e.g., FastAPI) ---
+# This part is for demonstration and not part of the original script,
+# but shows how to build the final MCPResponse.
+def create_full_mcp_response(request_action: str, request_parameters: Optional[Dict[str, str]] = None) -> MCPResponse:
+    """
+    Helper function to wrap the action handling and produce a complete MCPResponse.
+    """
+    try:
+        # Call the action handler which now returns a Pydantic data model or a dict
+        data_payload = handle_mcp_action(request_action, request_parameters)
+
+        # If data_payload is already a BaseModel, Pydantic handles its serialization.
+        # Otherwise, if it's a plain dict, it will be used as is.
+        return MCPResponse(status="success", data=data_payload)
+    except ValueError as e:
+        return MCPResponse(status="error", error=str(e))
+    except Exception as e:
+        # Catch any other unexpected errors
+        return MCPResponse(status="error", error=f"An unexpected error occurred: {type(e).__name__} - {str(e)}")
+
+# Example usage of the helper function:
+if __name__ == "__main__":
+    # Test list_models
+    print("--- Testing list_models ---")
+    response_list_models = create_full_mcp_response(action="list_models")
+    print(response_list_models.model_dump_json(indent=2)) # Use .model_dump_json() for Pydantic v2+
+
+    # Test switch_model
+    print("\n--- Testing switch_model ---")
+    response_switch_model = create_full_mcp_response(action="switch_model", parameters={"model": "lightgbm"})
+    print(response_switch_model.model_dump_json(indent=2))
+
+    # Test current_model
+    print("\n--- Testing current_model ---")
+    response_current_model = create_full_mcp_response(action="current_model")
+    print(response_current_model.model_dump_json(indent=2))
+
+    # Test metadata
+    print("\n--- Testing metadata ---")
+    response_metadata = create_full_mcp_response(action="metadata")
+    print(response_metadata.model_dump_json(indent=2))
+
+    # Test unsupported action
+    print("\n--- Testing unsupported action ---")
+    response_unsupported = create_full_mcp_response(action="unsupported_action")
+    print(response_unsupported.model_dump_json(indent=2))
+
+    # Test switch_model with missing parameter
+    print("\n--- Testing switch_model missing parameter ---")
+    response_missing_param = create_full_mcp_response(action="switch_model")
+    print(response_missing_param.model_dump_json(indent=2))
+
+    # Test switch_model with unknown model
+    print("\n--- Testing switch_model unknown model ---")
+    response_unknown_model = create_full_mcp_response(action="switch_model", parameters={"model": "unknown"})
+    print(response_unknown_model.model_dump_json(indent=2))
