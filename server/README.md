@@ -51,6 +51,7 @@ Supported actions:
 - `recommendations` – generate recommendations for a patient (equivalent to the `/recommendations` endpoint).
 - `chat` – invoke the chat agent using a `ChatRequest` payload.
 
+
 ### Example requests
 
 List models
@@ -108,3 +109,4 @@ curl -X POST http://localhost:8080/mcp \
     -H "Content-Type: application/json" \
     -d '{"action": "chat", "parameters": {"history": [{"role": "user", "content": "Hi"}], "user_input": "What does my risk mean?", "patient_data": {"PatientName": "Alice", "Glucose": 90, "BloodPressure": 80, "BMI": 25.0, "Age": 30, "Gender": 1, "Ethnicity": 3}, "recommendations": {"finalRecommendation": "See your doctor"}, "predicted_risk": "No Diabetes", "risk_probability": "0.2"}}'
 ```
+
