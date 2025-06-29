@@ -1,6 +1,11 @@
 from typing import Optional, Dict, List, Union, Any
 from pydantic import BaseModel
 
+try:
+    from . import main           # when imported as server.mcp
+except ImportError:  # pragma: no cover - fallback for direct execution
+    import main                  # when imported as top-level module
+
 # Available models that can be controlled via MCP
 AVAILABLE_MODELS: Dict[str, str] = {
     "lightgbm": "LightGBM",
@@ -88,7 +93,6 @@ def handle_mcp_action(action: str, parameters: Optional[Dict[str, Any]] = None) 
     if action == "predict":
         if not parameters:
             raise ValueError("patient parameters required for predict")
-        from . import main
         import numpy as np
         import asyncio
         patient = main.PatientData(**parameters)
@@ -100,7 +104,6 @@ def handle_mcp_action(action: str, parameters: Optional[Dict[str, Any]] = None) 
     if action == "recommendations":
         if not parameters:
             raise ValueError("patient parameters required for recommendations")
-        from . import main
         import numpy as np
         import asyncio
         patient = main.PatientData(**parameters)
@@ -121,7 +124,6 @@ def handle_mcp_action(action: str, parameters: Optional[Dict[str, Any]] = None) 
     if action == "chat":
         if not parameters:
             raise ValueError("chat parameters required")
-        from . import main
         import asyncio
         chat_request = main.ChatRequest(**parameters)
         return asyncio.run(main.chat(chat_request))
