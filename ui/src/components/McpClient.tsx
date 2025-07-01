@@ -7,6 +7,8 @@ import MenuItem from "@mui/material/MenuItem";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
 
+const MCP_API_URL = "https://diabetes-675059836631.us-central1.run.app/mcp";
+
 // Parameter Types
 interface PatientData {
   PatientName: string;
@@ -149,7 +151,7 @@ export default function McpClient() {
         parameters: parsedParams
       });
 
-      const res = await axios.post("/mcp", { action, parameters: parsedParams });
+      const res = await axios.post(MCP_API_URL, { action, parameters: parsedParams });
       setResponse(JSON.stringify(res.data, null, 2));
     } catch (err) {
       if (axios.isAxiosError(err)) {
