@@ -37,7 +37,7 @@ python3 main.py
 The server exposes `/mcp` for Model Control Protocol operations. Example:
 
 ```sh
-curl -X POST http://localhost:8080/mcp -H "Content-Type: application/json" \
+curl -X POST https://diabetes-675059836631.us-central1.run.app/mcp -H "Content-Type: application/json" \
     -d '{"action": "list_models"}'
 ```
 
@@ -57,7 +57,7 @@ Supported actions:
 List models
 
 ```sh
-curl -X POST http://localhost:8080/mcp \
+curl -X POST https://diabetes-675059836631.us-central1.run.app/mcp \
     -H "Content-Type: application/json" \
     -d '{"action": "list_models"}'
 ```
@@ -65,7 +65,7 @@ curl -X POST http://localhost:8080/mcp \
 Switch model
 
 ```sh
-curl -X POST http://localhost:8080/mcp \
+curl -X POST https://diabetes-675059836631.us-central1.run.app/mcp \
     -H "Content-Type: application/json" \
     -d '{"action": "switch_model", "parameters": {"model": "lightgbm"}}'
 ```
@@ -73,7 +73,7 @@ curl -X POST http://localhost:8080/mcp \
 Current model
 
 ```sh
-curl -X POST http://localhost:8080/mcp \
+curl -X POST https://diabetes-675059836631.us-central1.run.app/mcp \
     -H "Content-Type: application/json" \
     -d '{"action": "current_model"}'
 ```
@@ -81,7 +81,7 @@ curl -X POST http://localhost:8080/mcp \
 Metadata
 
 ```sh
-curl -X POST http://localhost:8080/mcp \
+curl -X POST https://diabetes-675059836631.us-central1.run.app/mcp \
     -H "Content-Type: application/json" \
     -d '{"action": "metadata"}'
 ```
@@ -89,7 +89,7 @@ curl -X POST http://localhost:8080/mcp \
 Predict
 
 ```sh
-curl -X POST http://localhost:8080/mcp \
+curl -X POST https://diabetes-675059836631.us-central1.run.app/mcp \
     -H "Content-Type: application/json" \
     -d '{"action": "predict", "parameters": {"PatientName": "Alice", "Glucose": 90, "BloodPressure": 80, "BMI": 25.0, "Age": 30, "Gender": 1, "Ethnicity": 3}}'
 ```
@@ -97,7 +97,7 @@ curl -X POST http://localhost:8080/mcp \
 Recommendations
 
 ```sh
-curl -X POST http://localhost:8080/mcp \
+curl -X POST https://diabetes-675059836631.us-central1.run.app/mcp \
     -H "Content-Type: application/json" \
     -d '{"action": "recommendations", "parameters": {"PatientName": "Alice", "Glucose": 90, "BloodPressure": 80, "BMI": 25.0, "Age": 30, "Gender": 1, "Ethnicity": 3}}'
 ```
@@ -105,7 +105,7 @@ curl -X POST http://localhost:8080/mcp \
 Chat
 
 ```sh
-curl -X POST http://localhost:8080/mcp \
+curl -X POST https://diabetes-675059836631.us-central1.run.app/mcp \
     -H "Content-Type: application/json" \
     -d '{"action": "chat", "parameters": {"history": [{"role": "user", "content": "Hi"}], "user_input": "What does my risk mean?", "patient_data": {"PatientName": "Alice", "Glucose": 90, "BloodPressure": 80, "BMI": 25.0, "Age": 30, "Gender": 1, "Ethnicity": 3}, "recommendations": {"finalRecommendation": "See your doctor"}, "predicted_risk": "No Diabetes", "risk_probability": "0.2"}}'
 ```
