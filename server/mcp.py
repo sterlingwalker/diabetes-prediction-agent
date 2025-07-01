@@ -68,7 +68,7 @@ def get_metadata() -> Dict[str, Optional[str]]:
 
 # --- Modified handle_mcp_action to return Pydantic data models directly ---
 # The return type hint is updated to reflect the Pydantic data models being returned.
-def handle_mcp_action(action: str, parameters: Optional[Dict[str, Any]] = None) -> Union[ModelListResponseData, CurrentModelResponseData, MetadataResponseData, Dict[str, Any]]:
+async def handle_mcp_action(action: str, parameters: Optional[Dict[str, Any]] = None) -> Union[ModelListResponseData, CurrentModelResponseData, MetadataResponseData, Dict[str, Any]]:
     """
     Handles different MCP actions and returns the appropriate data for the response.
     Returns Pydantic model instances for clarity and validation.
@@ -113,8 +113,8 @@ def handle_mcp_action(action: str, parameters: Optional[Dict[str, Any]] = None) 
         }
         risk_result = main.predict_diabetes_risk(patient_dict, compute_shap=False)
         cleaned_patient = main.convert_categorical_values(patient_dict.copy())
-        expert = asyncio.run(main.get_expert_recommendations(cleaned_patient, risk_result))
-        final_rec = main.get_final_recommendation(patient_dict, expert, risk_result)
+        expert = await main.get_expert_recommendations(cleaned_patient, risk_result)
+        final_rec = await main.get_final_recommendation(patient_dict, expert, risk_result)
         return {
             "endocrinologistRecommendation": expert.get("Endocrinologist", "No data"),
             "dietitianRecommendation": expert.get("Dietitian", "No data"),
@@ -126,7 +126,7 @@ def handle_mcp_action(action: str, parameters: Optional[Dict[str, Any]] = None) 
             raise ValueError("chat parameters required")
         import asyncio
         chat_request = main.ChatRequest(**parameters)
-        return asyncio.run(main.chat(chat_request))
+        return await main.chat(chat_request)
     raise ValueError("Unsupported MCP action")
 
 # --- Example of how this would be used in a web framework endpoint (e.g., FastAPI) ---
