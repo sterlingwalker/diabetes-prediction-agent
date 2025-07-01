@@ -135,7 +135,7 @@ function ChatComponent({
 
     try {
       const response = await axios.post(
-        "https://diabetes-prediction-agent.onrender.com/chat",
+        "https://diabetes-675059836631.us-central1.run.app/chat",
         {
           history: updatedHistory,
           user_input: userInput,

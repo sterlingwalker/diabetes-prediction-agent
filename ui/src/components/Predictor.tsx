@@ -78,7 +78,7 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
   const handleSubmit = async () => {
     try {
       const response = await axios.post(
-        "https://diabetes-prediction-agent.onrender.com/predict",
+        "https://diabetes-675059836631.us-central1.run.app/predict",
         formData,
       );
       if (response.data.error) {
@@ -97,7 +97,7 @@ export default function Predictor(props: { disableCustomTheme?: boolean }) {
   const getRecommendations = async () => {
     try {
       const response = await axios.post(
-        "https://diabetes-prediction-agent.onrender.com/recommendations",
+        "https://diabetes-675059836631.us-central1.run.app/recommendations",
         formData,
       );
       setRecommendation(response.data);
