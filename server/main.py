@@ -556,7 +556,7 @@ async def get_expert_recommendations(patient_data, risk_result):
     return expert_recommendations    
               
 # Generate Final Consolidated Recommendation
-def get_final_recommendation(patient_data, expert_recommendations, risk_result):
+async def get_final_recommendation(patient_data, expert_recommendations, risk_result):
     meta_agent_prompt = PromptTemplate(
         input_variables=['endocrinologist', 'dietitian', 'fitness', 'patient', 'risk_result'],
         template=(
@@ -574,7 +574,7 @@ def get_final_recommendation(patient_data, expert_recommendations, risk_result):
 
     meta_agent_chain = LLMChain(llm=llm, prompt=meta_agent_prompt)
 
-    final_recommendation = meta_agent_chain.run(
+    final_recommendation = await meta_agent_chain.arun(
         endocrinologist=expert_recommendations["Endocrinologist"],
         dietitian=expert_recommendations["Dietitian"],
         fitness=expert_recommendations["Fitness Expert"],
@@ -613,7 +613,7 @@ async def get_recommendations(patient: PatientData):
                 "Fitness Expert": "No recommendations available."
             }
 
-        final_recommendation = get_final_recommendation(patient_data, expert_recommendations, risk_result)
+        final_recommendation = await get_final_recommendation(patient_data, expert_recommendations, risk_result)
 
         return {
             "endocrinologistRecommendation": expert_recommendations.get("Endocrinologist", "No data"),
@@ -630,7 +630,7 @@ async def get_recommendations(patient: PatientData):
 @app.post("/mcp", response_model=MCPResponse)
 async def mcp_endpoint(request: MCPRequest):
     try:
-        data = handle_mcp_action(request.action, request.parameters)
+        data = await handle_mcp_action(request.action, request.parameters)
         return MCPResponse(status="ok", data=data)
     except Exception as e:
         return MCPResponse(status="error", error=str(e))
@@ -686,7 +686,7 @@ async def chat(chat_request: ChatRequest):
         formatted_recommendations = "\n".join([f"- {key}: {value}" for key, value in cleaned_recommendations.items()])
 
         # Pass System Prompt as Context in LLM Response Generation
-        response = chat_chain.run(
+        response = await chat_chain.arun(
             history=f"{system_prompt}\n{formatted_history}",
             user_input=chat_request.user_input,
             patient_data=formatted_patient_data,
