@@ -16,9 +16,52 @@ const actions = [
   { value: "chat", label: "Chat" },
 ];
 
+const defaultParams: Record<string, any> = {
+  list_models: {},
+  switch_model: { model: "lightgbm" },
+  current_model: {},
+  metadata: {},
+  predict: {
+    PatientName: "Alice",
+    Glucose: 90,
+    BloodPressure: 80,
+    BMI: 25.0,
+    Age: 30,
+    Gender: 1,
+    Ethnicity: 3,
+  },
+  recommendations: {
+    PatientName: "Alice",
+    Glucose: 90,
+    BloodPressure: 80,
+    BMI: 25.0,
+    Age: 30,
+    Gender: 1,
+    Ethnicity: 3,
+  },
+  chat: {
+    history: [{ role: "user", content: "Hi" }],
+    user_input: "What does my risk mean?",
+    patient_data: {
+      PatientName: "Alice",
+      Glucose: 90,
+      BloodPressure: 80,
+      BMI: 25.0,
+      Age: 30,
+      Gender: 1,
+      Ethnicity: 3,
+    },
+    recommendations: { finalRecommendation: "See your doctor" },
+    predicted_risk: "No Diabetes",
+    risk_probability: "0.2",
+  },
+};
+
 export default function McpClient() {
   const [action, setAction] = useState("list_models");
-  const [parameters, setParameters] = useState("{}");
+  const [parameters, setParameters] = useState(
+    JSON.stringify(defaultParams["list_models"], null, 2),
+  );
   const [response, setResponse] = useState("");
 
   const handleSubmit = async () => {
@@ -47,7 +90,11 @@ export default function McpClient() {
         select
         label="Action"
         value={action}
-        onChange={(e) => setAction(e.target.value)}
+        onChange={(e) => {
+          const val = e.target.value;
+          setAction(val);
+          setParameters(JSON.stringify(defaultParams[val] ?? {}, null, 2));
+        }}
       >
         {actions.map((option) => (
           <MenuItem key={option.value} value={option.value}>
