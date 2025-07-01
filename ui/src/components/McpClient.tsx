@@ -1,12 +1,59 @@
 import React, { useState } from "react";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
 import Typography from "@mui/material/Typography";
+import CircularProgress from "@mui/material/CircularProgress";
 
-const actions = [
+// Parameter Types
+interface PatientData {
+  PatientName: string;
+  Glucose: number;
+  BloodPressure: number;
+  BMI: number;
+  Age: number;
+  Gender: number;
+  Ethnicity: number;
+}
+
+interface PredictParams extends PatientData {}
+interface RecommendationsParams extends PatientData {}
+
+interface SwitchModelParams {
+  model: string;
+}
+
+interface ChatHistoryItem {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
+interface ChatParams {
+  history: ChatHistoryItem[];
+  user_input: string;
+  patient_data: PatientData;
+  recommendations: { finalRecommendation: string };
+  predicted_risk: string;
+  risk_probability: string;
+}
+
+// Type for all possible action parameters
+interface ActionParams {
+  list_models: Record<string, never>; // Explicitly no params
+  switch_model: SwitchModelParams;
+  current_model: Record<string, never>;
+  metadata: Record<string, never>;
+  predict: PredictParams;
+  recommendations: RecommendationsParams;
+  chat: ChatParams;
+}
+
+// Type for action keys
+type ActionKey = keyof ActionParams;
+
+const actions: { value: ActionKey; label: string }[] = [
   { value: "list_models", label: "List Models" },
   { value: "switch_model", label: "Switch Model" },
   { value: "current_model", label: "Current Model" },
@@ -16,7 +63,7 @@ const actions = [
   { value: "chat", label: "Chat" },
 ];
 
-const defaultParams: Record<string, any> = {
+const defaultParams: ActionParams = {
   list_models: {},
   switch_model: { model: "lightgbm" },
   current_model: {},
@@ -58,19 +105,67 @@ const defaultParams: Record<string, any> = {
 };
 
 export default function McpClient() {
-  const [action, setAction] = useState("list_models");
-  const [parameters, setParameters] = useState(
-    JSON.stringify(defaultParams["list_models"], null, 2),
+  const [action, setAction] = useState<ActionKey>("list_models");
+  const [parameters, setParameters] = useState<string>(
+    JSON.stringify(defaultParams[action], null, 2),
   );
-  const [response, setResponse] = useState("");
+  const [response, setResponse] = useState<string>("");
+  const [jsonError, setJsonError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const handleActionChange = (newAction: ActionKey) => {
+    setAction(newAction);
+    setParameters(JSON.stringify(defaultParams[newAction] ?? {}, null, 2));
+    setJsonError(null); // Clear JSON error when action changes
+  };
+
+  const handleParametersChange = (newParamsStr: string) => {
+    setParameters(newParamsStr);
+    try {
+      JSON.parse(newParamsStr);
+      setJsonError(null);
+    } catch (e) {
+      if (e instanceof Error) {
+        setJsonError("Invalid JSON: " + e.message);
+      } else {
+        setJsonError("Invalid JSON format.");
+      }
+    }
+  };
 
   const handleSubmit = async () => {
+    if (jsonError) {
+      setResponse("Error: Invalid JSON in parameters.");
+      return;
+    }
+    setIsLoading(true);
+    setResponse(""); // Clear previous response
+
     try {
-      const params = parameters.trim() ? JSON.parse(parameters) : undefined;
-      const res = await axios.post("/mcp", { action, parameters: params });
+      const parsedParams = parameters.trim() ? JSON.parse(parameters) : undefined;
+
+      console.log("MCP Request:", {
+        action: action,
+        parameters: parsedParams
+      });
+
+      const res = await axios.post("/mcp", { action, parameters: parsedParams });
       setResponse(JSON.stringify(res.data, null, 2));
-    } catch (err: any) {
-      setResponse(`Error: ${err.message}`);
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const axiosError = err as AxiosError;
+        let errorMsg = `Error: ${axiosError.message}`;
+        if (axiosError.response && axiosError.response.data) {
+          errorMsg += ` - ${JSON.stringify(axiosError.response.data)}`;
+        }
+        setResponse(errorMsg);
+      } else if (err instanceof Error) {
+        setResponse(`Error: ${err.message}`);
+      } else {
+        setResponse("An unknown error occurred");
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -108,9 +203,15 @@ export default function McpClient() {
         onChange={(e) => setParameters(e.target.value)}
         multiline
         minRows={4}
+        error={!!jsonError}
+        helperText={jsonError}
       />
-      <Button variant="contained" onClick={handleSubmit}>
-        Send
+      <Button
+        variant="contained"
+        onClick={handleSubmit}
+        disabled={isLoading || !!jsonError}
+      >
+        {isLoading ? <CircularProgress size={24} /> : "Send"}
       </Button>
       {response && (
         <TextField
